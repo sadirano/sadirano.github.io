@@ -49,10 +49,8 @@ document.addEventListener('DOMContentLoaded', function () {
     divgroup.appendChild(divBottom);
 
     divmain.appendChild(countdownDisplay);
-    divmain.appendChild(editDurationButton);
 
     divBottom.appendChild(deleteButton);
-    divBottom.appendChild(editNameButton);
     divBottom.appendChild(timerTitle);
     divBottom.appendChild(refreshButton);
 
@@ -74,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Edit Name button functionality
-    editNameButton.addEventListener('click', function () {
+    timerTitle.addEventListener('click', function () {
       const newTimerName = prompt('Enter a new name for the timer:', timerName);
       if (newTimerName !== null && newTimerName !== '') {
         timerName = newTimerName
@@ -91,19 +89,21 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Edit Duration button functionality
-    editDurationButton.addEventListener('click', function () {
+    countdownDisplay.addEventListener('click', function () {
       const timerId = timerElement.dataset.timerId;
       const timerIndex = timers.findIndex(timer => timer.timerId === timerId);
 
       const timerDurationInput = prompt('Enter a new duration:', timers[timerIndex].input);
 
-      newDuration = getDuration(timerDurationInput);
+      let newDuration = getDuration(timerDurationInput);
 
       if (!isNaN(newDuration) && newDuration > 0) {
         clearInterval(timerInterval);
         timerDurationDisplay.textContent = `${newDuration}`;
         startTime = Date.now();
         timerDuration = newDuration;
+        input = timerDurationInput;
+
 
         timers[timerIndex].startTime = startTime;
         timers[timerIndex].input = timerDurationInput;
@@ -133,7 +133,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const timerId = timerElement.dataset.timerId;
       const timerIndex = timers.findIndex(timer => timer.timerId === timerId);
+
+      let newDuration = getDuration(timers[timerIndex].input);
+      timerDurationDisplay.textContent = `${newDuration}`;
+      startTime = Date.now();
+      timerDuration = newDuration;
+
       timers[timerIndex].startTime = startTime;
+      timers[timerIndex].duration = newDuration;
 
       updateCountdown(); // Update the countdown display immediately
       startTimer();
@@ -145,46 +152,97 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function timeStringToSeconds(timeString) {
-    const hoursMatch = timeString.match(/(\d+)h/);
-    const minutesMatch = timeString.match(/(\d+)m/);
-  
-    if (!hoursMatch && !minutesMatch) {
-      throw new Error("Invalid time string format. Please use the format 'Xh' for hours or 'Ym' for minutes.");
+    const [timeComponent, expression = ''] = timeString.split(/\s+(.+)/);
+
+    const daysMatch = timeComponent.match(/(\d+)d/);
+    const hoursMatch = timeComponent.match(/(\d+)h/);
+    const minutesMatch = timeComponent.match(/(\d+)m/);
+    const secondsMatch = timeComponent.match(/(\d+)s/);
+
+    if (!daysMatch && !hoursMatch && !minutesMatch && !secondsMatch) {
+      throw new Error("Invalid time string format. Please use the format 'Xd', 'Yh', 'Zm', or 'As' for days, hours, minutes, and seconds respectively.");
     }
-  
+
+    let days = 0;
     let hours = 0;
     let minutes = 0;
-  
+    let seconds = 0;
+
+    if (daysMatch) {
+      days = parseInt(daysMatch[1], 10);
+    }
+
     if (hoursMatch) {
       hours = parseInt(hoursMatch[1], 10);
     }
-  
+
     if (minutesMatch) {
       minutes = parseInt(minutesMatch[1], 10);
     }
-  
-    const totalSeconds = (hours * 3600) + (minutes * 60);
+
+    if (secondsMatch) {
+      seconds = parseInt(secondsMatch[1], 10);
+    }
+
+    let totalSeconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds;
+
+    if (expression) {
+      totalSeconds = eval(totalSeconds + expression);
+    }
+
     return totalSeconds;
   }
+
+
 
   function hourStringToSeconds(timeString) {
     const [hours, minutes] = timeString.split(':').map(Number);
     if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
       throw new Error("Invalid time format. Please use the format 'HH:mm'.");
     }
-  
+
     const now = new Date();
     const targetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
-  
+
     // Check if the target time is earlier than the current time (next day)
     if (targetTime < now) {
       targetTime.setDate(targetTime.getDate() + 1);
     }
-  
+
     const timeDifference = (targetTime - now) / 1000; // Convert milliseconds to seconds
     return Math.round(timeDifference);
   }
-  
+
+  function textSecondsRemaining(condition) {
+    var now = new Date();
+
+    var targetHour;
+
+    switch (condition) {
+      case "odd":
+        targetHour = Math.floor(now.getHours() / 2) * 2 + 1; // Next odd hour
+        break;
+      case "even":
+        targetHour = Math.floor(now.getHours() / 2) * 2 + 2; // Next even hour
+        break;
+      case "next":
+        targetHour = now.getHours() + 1; // Next hour
+        break;
+      default:
+        throw new Error("Invalid condition. Please use 'odd', 'even', or 'next'.");
+    }
+
+    // Set the target time with the calculated hour and reset minutes and seconds
+    var targetTime = new Date(now);
+    targetTime.setHours(targetHour);
+    targetTime.setMinutes(0);
+    targetTime.setSeconds(0);
+
+    // Calculate the time difference in seconds
+    var timeDiff = (targetTime.getTime() - now.getTime()) / 1000;
+
+    return timeDiff;
+  }
 
   function getDuration(timerDurationInput) {
     try {
@@ -202,8 +260,18 @@ document.addEventListener('DOMContentLoaded', function () {
     try {
       return hourStringToSeconds(timerDurationInput);
     } catch (error) {
-      console.log(timerDurationInput + " is not a valid Time expression");
+      console.log(timerDurationInput + " is not a valid Hour expression");
     }
+
+    if (timerDurationInput === "day")
+      return 3600 * 24
+
+    try {
+      return textSecondsRemaining(timerDurationInput);
+    } catch (error) {
+      console.log(timerDurationInput + " is not a valid Hour expression");
+    }
+
 
   }
 
@@ -220,6 +288,26 @@ document.addEventListener('DOMContentLoaded', function () {
     const addTimerPopup = document.getElementById('add-timer-popup');
     addTimerPopup.style.display = 'none';
     AddPopupOpen = false;
+  }
+
+  function toggleButtons() {
+    toggle = localStorage.getItem('display') !== "none" ? "none" : "flex";
+    localStorage.setItem('display', toggle);
+    hideShowButtons(toggle)
+  }
+
+  function hideShowButtons(hide) {
+    toggleAllElements(".edit-button", hide);
+    toggleAllElements(".delete-button", hide);
+    // toggleAllElements(".refresh-button");
+  }
+
+  function toggleAllElements(className, toggle) {
+    // Hide all elements with the class "yourClassName"
+    var elements = document.querySelectorAll(className);
+    elements.forEach(function (element) {
+      element.style.display = toggle;
+    });
   }
 
   function createNewTimer() {
@@ -273,9 +361,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const timerId = timerData.timerId;
         const startTime = timerData.startTime;
         const timerElement = createTimerElement(timerId, timerData.name, timerData.duration, startTime);
-        timers.push({ timerId, name: timerData.name, duration: timerData.duration, startTime });
+        timers.push({ timerId, name: timerData.name, duration: timerData.duration, startTime, input: timerData.input });
         timerList.appendChild(timerElement);
       });
+    hideShowButtons(localStorage.getItem('display'))
     console.log("Loaded:" + JSON.stringify(timers))
   }
 
@@ -288,38 +377,42 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Event listener to open the creation popup when pressing Shift and + keys
   document.addEventListener('keydown', function (event) {
-    if (event.key === '+' && !AddPopupOpen) {
+    if (event.ctrlKey && event.key === 'a') {
+      event.preventDefault();
       AddPopupOpen = true;
-      event.preventDefault(); // Prevent the default behavior of the + key
       showAddTimerPopup();
     }
   });
 
   document.addEventListener('keydown', function (event) {
-    if (event.key === "Enter") {
+    if (event.ctrlKey && event.key === "Enter") {
       createNewTimer();
     }
   });
 
-
-  AddPopupOpen = false;
-  loadTimers();
-
-});
-
-document.addEventListener('DOMContentLoaded', function () {
   const editPopup = document.getElementById('edit-popup');
   const jsonEditor = document.getElementById('json-editor');
 
-  // Show the popup with the "e" shortcut
+
+  // Show the popup with the "Ctrl + e" shortcut
   document.addEventListener('keydown', function (event) {
-    if (event.key === 'e') {
-      event.preventDefault(); // Prevent the default behavior of the + key
+    if (event.ctrlKey && event.key === 'e') {
+      event.preventDefault();
       editPopup.style.display = 'block';
       jsonEditor.value = localStorage.getItem('timers');
       jsonEditor.focus();
     }
   });
+
+  // Show the popup with the "Ctrl + h" shortcut
+  document.addEventListener('keydown', function (event) {
+    if (event.ctrlKey && event.key === 'h') {
+      event.preventDefault();
+      toggleButtons();
+    };
+  });
+
+
 
   // Hide the popup with the ESC key
   document.addEventListener('keydown', function (event) {
@@ -337,4 +430,8 @@ document.addEventListener('DOMContentLoaded', function () {
       console.error('Invalid JSON:', error);
     }
   });
+
+  AddPopupOpen = false;
+  loadTimers();
+
 });
