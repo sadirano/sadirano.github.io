@@ -58,12 +58,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let remainingTime = timerDuration - Math.floor((Date.now() - startTime) / 1000);
 
     function updateCountdown() {
-      remainingTime = Math.max(0, timerDuration - Math.floor((Date.now() - startTime) / 1000));
-      countdownDisplay.textContent = remainingTime === 0 ? 'Done' : remainingTime;
-
-      if (remainingTime === 0) {
-        clearInterval(timerInterval);
-      }
+      remainingTime = timerDuration - Math.floor((Date.now() - startTime) / 1000);
+      countdownDisplay.textContent = remainingTime;
     }
 
     function startTimer() {
