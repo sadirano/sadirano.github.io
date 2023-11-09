@@ -1,5 +1,7 @@
 body {
     font-family: sans-serif;
+    background-color: #121212;
+    color: #fff;
 }
 
 button {
@@ -12,14 +14,15 @@ button {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: #fff;
+    background: #1e1e1e;
     padding: 10px;
     z-index: 1;
+    color: #fff;
 }
 
 header {
     background-color: #333;
-    color: white;
+    color: #fff;
     padding: 10px;
     text-align: center;
 }
@@ -36,6 +39,7 @@ main {
 label,
 input {
     margin-bottom: 10px;
+    color: #fff;
 }
 
 #timer-list {
@@ -43,14 +47,15 @@ input {
 }
 
 .timer {
-    background-color: #f9f9f9;
+    background-color: #333;
     display: inline-flex;
     margin: auto;
-    width: 20%;
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
+    color: #fff;
+    width: 140px;
 }
 
 .div-main {
@@ -68,7 +73,9 @@ input {
 }
 
 .timer h5 {
-    color: #333;
+    color: #eee;
+    margin-top: 0px;
+    margin-bottom: 0px;
 }
 
 .timer div h2 {
