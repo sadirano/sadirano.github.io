@@ -1,13 +1,12 @@
 body {
     font-family: sans-serif;
-    background-color: #121212;
+    background-color: #333;
     color: #fff;
 }
 
 button {
     display: flex;
 }
-
 .popup {
     display: none;
     position: fixed;
@@ -21,7 +20,7 @@ button {
 }
 
 header {
-    background-color: #333;
+    /* background-color: #333; */
     color: #fff;
     padding: 10px;
     text-align: center;
@@ -61,7 +60,7 @@ input {
 }
 
 .timer {
-    background-color: #333;
+    /* background-color: #333; */
     display: inline-flex;
     margin: auto;
     flex-direction: row;
@@ -111,7 +110,7 @@ input {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: #fff;
+    /* background: #fff; */
     border: 1px solid #ccc;
     padding: 10px;
     z-index: 1;
@@ -121,4 +120,29 @@ input {
 #json-editor {
     width: 100%;
     height: 200px;
+}
+
+#customPrompt {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* background: rgba(0, 0, 0, 0.5); */
+    justify-content: center;
+    align-items: center;
+}
+
+#promptContent {
+    /* background: #777676; */
+    padding: 20px;
+    border-radius: 5px;
+}
+
+#promptInput {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+    background-color: #333;
 }

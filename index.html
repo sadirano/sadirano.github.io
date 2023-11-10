@@ -1,27 +1,22 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Sad Timer</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+    <script src="commons/utils.js"></script>
+    <script src="commons/time.js"></script>
 </head>
 
 <body>
-    <div class="timer-container" id="timer-list">
-        <!-- Timers will be added here -->
-    </div>
+    <div class="timer-container" id="timer-list"> </div>
 
-    <div id="add-timer-popup" class="popup">
-        <input type="text" id="timer-name" value="Timer">
-        <br>
-        <input type="text" id="timer-duration" value="60">
-    </div>
-
-
-    <!-- Floating popup for JSON editing -->
-    <div id="edit-popup" class="popup">
-        <h2>Edit Timers (JSON)</h2>
-        <textarea id="json-editor"></textarea>
+    <div id="customPrompt">
+        <div id="promptContent">
+            <input type="text" id="promptInput">
+            <input type="hidden" id="promptType">
+        </div>
     </div>
 
     <script src="script.js"></script>
