@@ -19,9 +19,9 @@ function showNotification(msg) {
         var notification = new Notification(msg);
 
         // You can handle click events on the notification
-        notification.onclick = function () {
-            alert("Notification clicked");
-        };
+        // notification.onclick = function () {
+        //     // alert("Notification clicked");
+        // };
     }
 
     // If permission is not yet granted, request it
