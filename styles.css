@@ -59,6 +59,15 @@ input {
     flex-direction: row-reverse;
 }
 
+.div-hint {
+    display: flex;
+    margin: auto;
+    align-items: baseline;
+    justify-content: center;
+    flex-direction: row-reverse;
+    font-size: xx-small;
+}
+
 .timer {
     /* background-color: #333; */
     display: inline-flex;

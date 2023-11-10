@@ -48,6 +48,8 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
   const timerElement = document.createElement('div');
   timerElement.className = 'timer';
   timerElement.dataset.timerId = timerId;
+
+
   const timerDurationDisplay = document.createElement('h5');
   timerDurationDisplay.textContent = `${timerDuration}`;
   timerDurationDisplay.style.display = 'none';
@@ -72,10 +74,22 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
   const divgroup = document.createElement('div');
   divgroup.className = 'vert-timer';
 
+  const divElement = document.createElement('inputDiv');
+  divElement.className = 'div-hint';
+
+  timerElement.addEventListener('mouseover', function () {
+    divElement.innerHTML = timers[getIndex(timerElement)].input;
+  });
+
+  timerElement.addEventListener('mouseout', function () {
+    divElement.innerHTML = ''; // Clear the text when not hovering
+  });
+
   timerElement.appendChild(divgroup);
 
   divgroup.appendChild(divmain);
   divgroup.appendChild(divBottom);
+  divgroup.appendChild(divElement);
 
   divmain.appendChild(countdownDisplay);
 
@@ -113,6 +127,9 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
     openPrompt(timers[getIndex(timerElement)].input, "duration");
   });
 
+
+
+
   function openPrompt(initialValue, elementToUpdate) {
     promptInput.value = initialValue;
     promptType.value = elementToUpdate;
@@ -147,7 +164,7 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
 
         let timerIndex = getIndex(timerElement);
 
-        timers[timerIndex].name = name;
+        timers[timerIndex].name = newTimerName;
         saveTimers();
       }
     } else {
