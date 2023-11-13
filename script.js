@@ -92,7 +92,7 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
     let note = '';
     if(t.note !== '' && t.note !== undefined && t.note !== 'undefined') {
       note = '<br>' 
-      + t.note 
+      + formatNote(t.note)
     } 
     divElement.innerHTML = '' 
     + hour.startTime + ' / ' + hour.endTime
@@ -161,8 +161,11 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
     
     // Clear previous event listeners
     promptInput.removeEventListener('keydown', handlePromptKeydown);
+    promptInput.removeEventListener("blur", cancelPrompt);
+    document.removeEventListener('keydown', cancelPrompt);
     // Add new event listener
     promptInput.addEventListener('keydown', handlePromptKeydown);
+    promptInput.addEventListener("blur", cancelPrompt);
     document.addEventListener('keydown', cancelPrompt);
   }
 
@@ -173,7 +176,7 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
   }
 
   function cancelPrompt(event) {
-    if (event.key === "Escape") {
+    if (event.key === "Escape" || event.type === "blur") {
       editMode = false;
       customPrompt.style.display = 'none';
       promptInput.removeEventListener('keydown', handlePromptKeydown);
