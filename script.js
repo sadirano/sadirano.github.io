@@ -1,4 +1,6 @@
 const timers = [];
+let editMode = false;
+let lastCountdownAdded;
 
 document.addEventListener('DOMContentLoaded', function () {
   setInterval(refreshPage, 60000);
@@ -7,6 +9,13 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('keydown', copyTimers);
   document.addEventListener('keydown', createNewTimer);
 });
+
+function refreshPage() {
+  if(!editMode) {
+    location.reload();
+  }
+}
+
 
 function pasteTimers(event) {
   if (event.ctrlKey && event.key === 'e') {
@@ -37,8 +46,8 @@ function createNewTimer(event) {
     let timerDuration = getDuration(timerDurationInput);
     const startTime = Date.now();
 
-    const timerElement = createTimerElement(generateRandomId(), timerName, timerDuration, startTime);
-    timers.push({ timerId: timerElement.dataset.timerId, name: timerName, duration: timerDuration, startTime, input: timerDurationInput });
+    const timerElement = createTimerElement(generateRandomId(), timerName, timerDuration, startTime, true);
+    timers.push({ timerId: timerElement.dataset.timerId, name: timerName, duration: timerDuration, startTime, input: timerDurationInput, note: '' });
     timerList.appendChild(timerElement);
     saveTimers();
   }
@@ -78,7 +87,18 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
   divElement.className = 'div-hint';
 
   timerElement.addEventListener('mouseover', function () {
-    divElement.innerHTML = timers[getIndex(timerElement)].input;
+    let t = timers[getIndex(timerElement)];
+    let hour = formatTime(t.startTime, t.duration);
+    let note = '';
+    if(t.note !== '' && t.note !== undefined && t.note !== 'undefined') {
+      note = '<br>' 
+      + t.note 
+    } 
+    divElement.innerHTML = '' 
+    + hour.startTime + ' / ' + hour.endTime
+    + '<br>' 
+    + t.input 
+    + note;
   });
 
   timerElement.addEventListener('mouseout', function () {
@@ -127,14 +147,18 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
     openPrompt(timers[getIndex(timerElement)].input, "duration");
   });
 
-
-
+  divElement.addEventListener('click', function () {
+    openPrompt(timers[getIndex(timerElement)].note, "note");
+  });
 
   function openPrompt(initialValue, elementToUpdate) {
-    promptInput.value = initialValue;
+    editMode = true;
+    promptInput.value = initialValue === undefined ? '' : initialValue;
     promptType.value = elementToUpdate;
     customPrompt.style.display = 'flex';
     promptInput.focus();
+    promptInput.select();
+    
     // Clear previous event listeners
     promptInput.removeEventListener('keydown', handlePromptKeydown);
     // Add new event listener
@@ -143,56 +167,78 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
   }
 
   function handlePromptKeydown(event) {
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter'|| event.key === 'Tab') {
       submitPrompt();
     }
   }
 
   function cancelPrompt(event) {
     if (event.key === "Escape") {
+      editMode = false;
       customPrompt.style.display = 'none';
       promptInput.removeEventListener('keydown', handlePromptKeydown);
     }
   }
 
   function submitPrompt() {
-    if (promptType.value === "name") {
-      const newTimerName = promptInput.value;
-      if (newTimerName !== null && newTimerName !== '') {
-        timerName.textContent = newTimerName;
-        customPrompt.style.display = 'none';
 
-        let timerIndex = getIndex(timerElement);
+    switch(promptType.value) {
+      case "name":
+        const newTimerName = promptInput.value;
+        if (newTimerName !== null && newTimerName !== '') {
+          timerName.textContent = newTimerName;
+  
+          let timerIndex = getIndex(timerElement);
+  
+          timers[timerIndex].name = newTimerName;
+          saveTimers();
+        }
+        break;
+      case "duration":
+        const timerDurationInput = promptInput.value;
 
-        timers[timerIndex].name = newTimerName;
+        let newDuration = getDuration(timerDurationInput);
+  
+        if (!isNaN(newDuration) && newDuration > 0) {
+          clearInterval(timerInterval);
+          timerDurationDisplay.textContent = `${newDuration}`;
+          startTime = Date.now();
+          timerDuration = newDuration;
+          input = timerDurationInput;
+  
+          let timerIndex = getIndex(timerElement);
+  
+          timers[timerIndex].startTime = startTime;
+          timers[timerIndex].input = timerDurationInput;
+          timers[timerIndex].duration = newDuration;
+          updateCountdown();
+          saveTimers();
+          startTimer();
+          openPrompt(timerName.textContent, "name");
+  
+          if(timerName.textContent === "Timer") {
+            openPrompt(timerName.textContent, "name");
+          }
+        }
+        break;
+      case "note":
+        const newNote = promptInput.value;
+        if (newNote === null) {
+          newNote = ''
+        }
+  
+        timers[getIndex(timerElement)].note = newNote;
         saveTimers();
-      }
-    } else {
-      const timerDurationInput = promptInput.value;
 
-      let newDuration = getDuration(timerDurationInput);
-
-      if (!isNaN(newDuration) && newDuration > 0) {
-        clearInterval(timerInterval);
-        timerDurationDisplay.textContent = `${newDuration}`;
-        startTime = Date.now();
-        timerDuration = newDuration;
-        input = timerDurationInput;
-
-        let timerIndex = getIndex(timerElement);
-
-        timers[timerIndex].startTime = startTime;
-        timers[timerIndex].input = timerDurationInput;
-        timers[timerIndex].duration = newDuration;
-        updateCountdown();
-        saveTimers();
-        startTimer();
-      }
+        break;
+      default:
+          // code block
     }
-    customPrompt.style.display = 'none';
 
+    customPrompt.style.display = 'none';
     // Clear event listener after submitting
     promptInput.removeEventListener('keydown', handlePromptKeydown);
+    editMode = false;
   }
 
   // Delete button functionality
@@ -254,7 +300,7 @@ function loadTimers() {
       const timerId = timerData.timerId;
       const startTime = timerData.startTime;
       const timerElement = createTimerElement(timerId, timerData.name, timerData.duration, startTime);
-      timers.push({ timerId, name: timerData.name, duration: timerData.duration, startTime, input: timerData.input });
+      timers.push({ timerId, name: timerData.name, duration: timerData.duration, startTime, input: timerData.input, note: timerData.note });
       timerList.appendChild(timerElement);
     });
 }

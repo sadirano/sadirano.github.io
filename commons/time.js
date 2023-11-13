@@ -1,3 +1,30 @@
+function formatTime(startTimestamp, durationInSeconds) {
+  // Calculate the end timestamp
+  var endTimestamp = startTimestamp + (durationInSeconds * 1000);
+
+  // Create Date objects
+  var startDate = new Date(startTimestamp); // Multiply by 1000 to convert to milliseconds
+  var endDate = new Date(endTimestamp);
+
+  // Get hours and minutes
+  var startHours = startDate.getHours();
+  var startMinutes = startDate.getMinutes();
+  var endHours = endDate.getHours();
+  var endMinutes = endDate.getMinutes();
+
+  // Format hours and minutes with leading zeros if needed
+  startHours = (startHours < 10) ? "0" + startHours : startHours;
+  startMinutes = (startMinutes < 10) ? "0" + startMinutes : startMinutes;
+  endHours = (endHours < 10) ? "0" + endHours : endHours;
+  endMinutes = (endMinutes < 10) ? "0" + endMinutes : endMinutes;
+
+  // Construct the formatted time strings
+  var startTimeString = startHours + ":" + startMinutes;
+  var endTimeString = endHours + ":" + endMinutes;
+
+  return { startTime: startTimeString, endTime: endTimeString };
+}
+
 function timeStringToSeconds(timeString) {
   const [timeComponent, expression = ''] = timeString.split(/\s+(.+)/);
 
