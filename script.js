@@ -38,19 +38,23 @@ function copyTimers(event) {
 }
 
 
-function createNewTimer(event) {
+function createNewTimerEvent(event) {
   if (event.ctrlKey && event.key === "Enter") {
-    const timerList = document.getElementById('timer-list');
-    const timerName = "Timer";
-    const timerDurationInput = 60;
-    let timerDuration = getDuration(timerDurationInput);
-    const startTime = Date.now();
-
-    const timerElement = createTimerElement(generateRandomId(), timerName, timerDuration, startTime, true);
-    timers.push({ timerId: timerElement.dataset.timerId, name: timerName, duration: timerDuration, startTime, input: timerDurationInput, note: '' });
-    timerList.appendChild(timerElement);
-    saveTimers();
+    newTimer();
   }
+}
+
+function newTimer() {
+  const timerList = document.getElementById('timer-list');
+  const timerName = "Timer";
+  const timerDurationInput = 60;
+  let timerDuration = getDuration(timerDurationInput);
+  const startTime = Date.now();
+
+  const timerElement = createTimerElement(generateRandomId(), timerName, timerDuration, startTime, true);
+  timers.push({ timerId: timerElement.dataset.timerId, name: timerName, duration: timerDuration, startTime, input: timerDurationInput, note: '' });
+  timerList.appendChild(timerElement);
+  saveTimers();
 }
 
 function createTimerElement(timerId, name, timerDuration, startTime) {

@@ -80,6 +80,21 @@ input {
     width: 25%;
 }
 
+@media screen and (max-width: 600px) {
+    /* Styles for small screens (e.g., smartphones) */
+    .timer {
+        /* background-color: #333; */
+        display: inline-flex;
+        margin: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        color: #fff;
+        width: 100%;
+    }
+}
+
 .timer h5 {
     color: #eee;
     margin-top: 0px;
@@ -154,4 +169,26 @@ input {
     box-sizing: border-box;
     margin-bottom: 10px;
     background-color: #333;
+}
+
+.floating-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000; /* Adjust the z-index to make sure it appears above other elements */
+}
+
+.floating-button button {
+    padding: 10px 15px;
+    background-color: #3498db;
+    color: #fff;
+    border: none;
+    border-radius: 40px;
+    cursor: pointer;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Optional: Hover effect */
+.floating-button button:hover {
+    background-color: #2980b9;
 }
