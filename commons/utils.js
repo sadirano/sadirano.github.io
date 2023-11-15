@@ -2,15 +2,7 @@ function generateRandomId() {
     return Math.random().toString(36).substring(2, 11);
 }
 
-function formatNote(inputString) {
-    // Split the input string into an array
-    var textArray = inputString.split("/");
 
-    // Join the array elements with "<br>"
-    var formattedText = textArray.join("<br>");
-
-    return formattedText;
-}
 
 function showNotification(msg) {
     // Check if the browser supports notifications

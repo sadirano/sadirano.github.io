@@ -110,31 +110,31 @@ function createNewTimerEvent(event) {
 function newTimer() {
   const timerList = document.getElementById('timer-list');
   const timerName = "Timer";
-  const timerDurationInput = 60;
-  let timerDuration = getDuration(timerDurationInput);
+  const durationInput = 60;
+  let duration = getDuration(durationInput);
   const startTime = Date.now();
+  let timer = { timerId: generateRandomId(), name: timerName, duration: duration, startTime, input: durationInput, note: '' }
 
-  const timerElement = createTimerElement(generateRandomId(), timerName, timerDuration, startTime, true);
-  timers.push({ timerId: timerElement.dataset.timerId, name: timerName, duration: timerDuration, startTime, input: timerDurationInput, note: '' });
+  const timerElement = createTimerElement(timer);
+  timers.push(timer);
   timerList.appendChild(timerElement);
   saveTimers();
 }
 
-function createTimerElement(timerId, name, timerDuration, startTime) {
+function createTimerElement(timer) {
   const timerElement = document.createElement('div');
   timerElement.className = 'timer';
-  timerElement.dataset.timerId = timerId;
+  timerElement.dataset.timerId = timer.timerId;
 
-
-  const timerDurationDisplay = document.createElement('h5');
-  timerDurationDisplay.textContent = `${timerDuration}`;
-  timerDurationDisplay.style.display = 'none';
+  const durationDisplay = document.createElement('h5');
+  durationDisplay.textContent = `${timer.duration}`;
+  durationDisplay.style.display = 'none';
 
   const countdownDisplay = document.createElement('h2');
   const divBottom = document.createElement('div');
   divBottom.className = 'div-bottom';
   const timerName = document.createElement('h5');
-  timerName.textContent = name;
+  timerName.textContent = timer.name;
 
   const deleteButton = document.createElement('button');
   deleteButton.innerHTML = '&#10006;';
@@ -150,26 +150,44 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
   const divgroup = document.createElement('div');
   divgroup.className = 'vert-timer';
 
+  updateBackgroundImage();
+
   const divElement = document.createElement('inputDiv');
   divElement.className = 'div-hint';
 
   timerElement.addEventListener('mouseover', function () {
-    let t = timers[getIndex(timerElement)];
-    let hour = formatTime(t.startTime, t.duration);
     let note = '';
-    if (t.note !== '' && t.note !== undefined && t.note !== 'undefined') {
-      note = '<br>'
-        + formatNote(t.note)
+    let hour = formatTime(timer.startTime, timer.duration);
+    if (timer.note !== '' && timer.note !== undefined && timer.note !== 'undefined') {
+      let noteLines = timer.note.split("\n");
+      for (let line of noteLines) {
+        if (!line.trim().startsWith("img=")) { //ignore only the img config
+          note += line.trim() + '<br>';
+        }
+      }
     }
     divElement.innerHTML = ''
-      + hour.startTime + ' / ' + hour.endTime + ' - ' + t.input
-      + '<br>'
+      + hour.startTime + ' / ' + hour.endTime + ' - ' + timer.input + '<br>'
       + note;
   });
 
-  timerElement.addEventListener('mouseout', function () {
-    divElement.innerHTML = ''; // Clear the text when not hovering
-  });
+  timerElement.addEventListener('mouseout',updateNote);
+
+  function updateBackgroundImage() {
+    if (timer.note !== '' && timer.note !== undefined && timer.note !== 'undefined') {
+      let noteLines = timer.note.split("\n");
+      for (let line of noteLines) {
+        // Check for img= at the start of the note
+        if (line.startsWith("img=")) {
+          const noteUrl = line.substring(4).trim();
+          divgroup.style.backgroundImage = `url('${noteUrl}')`;
+          return;
+        }
+      }
+    }
+    divgroup.style.backgroundImage = ``;
+  }
+
 
   timerElement.appendChild(divgroup);
 
@@ -184,11 +202,11 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
   divBottom.appendChild(deleteButton);
 
   let timerInterval;
-  let remainingTime = timerDuration - Math.floor((Date.now() - startTime) / 1000);
+  let remainingTime = timer.duration - Math.floor((Date.now() - timer.startTime) / 1000);
   let currentClass = ""; // Initialize with an empty class
 
   function updateCountdown() {
-    remainingTime = timerDuration - Math.floor((Date.now() - startTime) / 1000);
+    remainingTime = timer.duration - Math.floor((Date.now() - timer.startTime) / 1000);
     if (remainingTime === 0) {
       let options = { hour: "2-digit", minute: "2-digit" };
       let hora = new Date().toLocaleString("en-us", options)
@@ -196,14 +214,14 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
     }
     countdownDisplay.textContent = remainingTime;
 
-    let percentage = (remainingTime / timerDuration) * 100;
+    let percentage = (remainingTime / timer.duration) * 100;
     // Calculate the new class based on percentage
     let newClass = "-normal";
     if (percentage < 10) {
       newClass = "-danger";
-    } else if (percentage < 20) {
+    } else if (percentage < 25) {
       newClass = "-alert";
-    } else if (percentage < 30) {
+    } else if (percentage < 50) {
       newClass = "-attention";
     }
 
@@ -217,45 +235,59 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
 
   function startTimer() {
     updateCountdown();
-    timerInterval = setInterval(updateCountdown, 1000);
+    setInterval(updateCountdown, 330);
   }
 
   const customPrompt = document.getElementById('customPrompt');
-  const promptInput = document.getElementById('promptInput');
+  const prompt = document.getElementById('prompt');
   const promptType = document.getElementById('promptType');
 
   timerName.addEventListener('click', function () {
-    openPrompt(timerName.textContent, "name");
+    openPrompt(timer.name, "name");
   });
 
   countdownDisplay.addEventListener('click', function () {
-    openPrompt(timers[getIndex(timerElement)].input, "duration");
+    openPrompt(timer.input, "duration");
   });
 
   divElement.addEventListener('click', function () {
-    openPrompt(timers[getIndex(timerElement)].note, "note");
+    openPrompt(timer.note, "note");
   });
 
+
+  // Updated openPrompt function to handle multiline notes input
   function openPrompt(initialValue, elementToUpdate) {
     editMode = true;
-    promptInput.value = initialValue === undefined ? '' : initialValue;
-    promptType.value = elementToUpdate;
     customPrompt.style.display = 'flex';
-    promptInput.focus();
-    promptInput.select();
+    promptType.value = elementToUpdate;
 
     // Clear previous event listeners
-    promptInput.removeEventListener('keydown', handlePromptKeydown);
-    promptInput.removeEventListener("blur", cancelPrompt);
+    prompt.removeEventListener('keydown', handlePromptKeydown);
+    prompt.removeEventListener("blur", cancelPrompt);
     document.removeEventListener('keydown', cancelPrompt);
-    // Add new event listener
-    promptInput.addEventListener('keydown', handlePromptKeydown);
-    promptInput.addEventListener("blur", cancelPrompt);
+
+//    prompt.textContent = initialValue;
+    prompt.value = initialValue;
+
+    // Create a textarea for notes input
+    if (elementToUpdate === "note") {
+      prompt.rows = 5; // Set the number of rows as needed
+    } else {
+      prompt.rows = 1;
+    }
+
+    prompt.addEventListener('keydown', handlePromptKeydown);
+    // Add new event listeners
+    prompt.addEventListener("blur", cancelPrompt);
     document.addEventListener('keydown', cancelPrompt);
+
+    customPrompt.appendChild(prompt);
+    prompt.focus();
+    prompt.select();
   }
 
   function handlePromptKeydown(event) {
-    if (event.key === 'Enter' || event.key === 'Tab') {
+    if ((event.key === 'Enter' && !event.shiftKey ) || event.key === 'Tab') {
       submitPrompt();
     }
   }
@@ -264,41 +296,34 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
     if (event.key === "Escape" || event.type === "blur") {
       editMode = false;
       customPrompt.style.display = 'none';
-      promptInput.removeEventListener('keydown', handlePromptKeydown);
+      prompt.removeEventListener('keydown', handlePromptKeydown);
     }
   }
 
+  // Updated submitPrompt function to handle notes changes
   function submitPrompt() {
-
     switch (promptType.value) {
       case "name":
-        const newTimerName = promptInput.value;
+        const newTimerName = prompt.value;
         if (newTimerName !== null && newTimerName !== '') {
           timerName.textContent = newTimerName;
 
-          let timerIndex = getIndex(timerElement);
-
-          timers[timerIndex].name = newTimerName;
+          timer.name = newTimerName;
           saveTimers();
         }
         break;
       case "duration":
-        const timerDurationInput = promptInput.value;
+        const durationInput = prompt.value;
 
-        let newDuration = getDuration(timerDurationInput);
+        let newDuration = getDuration(durationInput);
 
         if (!isNaN(newDuration) && newDuration > 0) {
           clearInterval(timerInterval);
-          timerDurationDisplay.textContent = `${newDuration}`;
-          startTime = Date.now();
-          timerDuration = newDuration;
-          input = timerDurationInput;
+          durationDisplay.textContent = `${newDuration}`;
+          timer.startTime = Date.now();
+          timer.duration = newDuration;
+          timer.input = durationInput;
 
-          let timerIndex = getIndex(timerElement);
-
-          timers[timerIndex].startTime = startTime;
-          timers[timerIndex].input = timerDurationInput;
-          timers[timerIndex].duration = newDuration;
           updateCountdown();
           saveTimers();
           startTimer();
@@ -310,55 +335,59 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
         }
         break;
       case "note":
-        const newNote = promptInput.value;
-        if (newNote === null) {
-          newNote = ''
-        }
-
-        timers[getIndex(timerElement)].note = newNote;
+        const newNote = prompt.value;
+        timer.note = newNote;
+        updateNote(1);
+        updateBackgroundImage()
         saveTimers();
-
         break;
+
       default:
-      // code block
     }
 
     customPrompt.style.display = 'none';
-    // Clear event listener after submitting
-    promptInput.removeEventListener('keydown', handlePromptKeydown);
     editMode = false;
   }
+
+  customPrompt.style.display = 'none';
+  // Clear event listener after submitting
+  prompt.removeEventListener('keydown', handlePromptKeydown);
+  editMode = false;
 
   // Delete button functionality
   deleteButton.addEventListener('click', function () {
     document.getElementById('timer-list').removeChild(timerElement);
     clearInterval(timerInterval);
-    let timerIndex = getIndex(timerElement)
+    let timerIndex = timers.findIndex(t => t.timerId === timer.timerId);
     if (timerIndex - 1) {
       timers.splice(timerIndex, 1);
       saveTimers();
     }
   });
 
-  function getIndex(timerElement) {
-    timerId = timerElement.dataset.timerId;
-    return timers.findIndex(timer => timer.timerId === timerId);
+  updateNote();
+  function updateNote(event) {
+    let note = '';
+    if (timer.note !== '' && timer.note !== undefined && timer.note !== 'undefined') {
+      let noteLines = timer.note.split("\n");
+      for (let line of noteLines) {
+        if (line.trim().startsWith("!")) {
+          note += line.substring(1).trim() +'<br>';
+        }
+      }
+    }
+    divElement.innerHTML = note; // Show the formatted note
   }
+
 
   // Refresh button functionality
   refreshButton.addEventListener('click', function () {
     clearInterval(timerInterval);
-    startTime = Date.now();
 
-    let timerIndex = getIndex(timerElement);
-
-    let newDuration = getDuration(timers[timerIndex].input);
-    timerDurationDisplay.textContent = `${newDuration}`;
-    startTime = Date.now();
-    timerDuration = newDuration;
-
-    timers[timerIndex].startTime = startTime;
-    timers[timerIndex].duration = newDuration;
+    let newDuration = getDuration(timer.input);
+    durationDisplay.textContent = `${newDuration}`;
+    timer.startTime = Date.now();
+    timer.duration = newDuration;
 
     updateCountdown();
     startTimer();
@@ -387,8 +416,9 @@ function loadTimers() {
     .forEach((timerData) => {
       const timerId = timerData.timerId;
       const startTime = timerData.startTime;
-      const timerElement = createTimerElement(timerId, timerData.name, timerData.duration, startTime);
-      timers.push({ timerId, name: timerData.name, duration: timerData.duration, startTime, input: timerData.input, note: timerData.note });
+      const timer = { timerId, name: timerData.name, duration: timerData.duration, startTime, input: timerData.input, note: timerData.note };
+      const timerElement = createTimerElement(timer);
+      timers.push(timer);
       timerList.appendChild(timerElement);
     });
 }
