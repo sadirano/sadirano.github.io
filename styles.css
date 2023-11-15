@@ -7,6 +7,7 @@ body {
 button {
     display: flex;
 }
+
 .popup {
     display: none;
     position: fixed;
@@ -56,7 +57,7 @@ input {
     margin: auto;
     align-items: baseline;
     justify-content: center;
-    flex-direction: row-reverse;
+    flex-direction: row;
 }
 
 .div-hint {
@@ -64,7 +65,7 @@ input {
     margin: auto;
     align-items: baseline;
     justify-content: center;
-    flex-direction: row-reverse;
+    flex-direction: row;
     font-size: xx-small;
 }
 
@@ -81,6 +82,7 @@ input {
 }
 
 @media screen and (max-width: 600px) {
+
     /* Styles for small screens (e.g., smartphones) */
     .timer {
         /* background-color: #333; */
@@ -104,7 +106,6 @@ input {
 .timer div h2 {
     display: flex;
     justify-content: center;
-    color: #0073e6;
     margin: auto;
     font-size: xxx-large;
 }
@@ -171,24 +172,45 @@ input {
     background-color: #333;
 }
 
+
 .floating-button {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    z-index: 1000; /* Adjust the z-index to make sure it appears above other elements */
+    z-index: 1000;
+    /* Adjust the z-index to make sure it appears above other elements */
 }
 
 .floating-button button {
-    padding: 10px 15px;
+    width: 100%;
     background-color: #3498db;
     color: #fff;
     border: none;
-    border-radius: 40px;
+    border-radius: 100%;
     cursor: pointer;
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-content: center;
+    flex-wrap: wrap;
+    flex-direction: column;
 }
 
 /* Optional: Hover effect */
 .floating-button button:hover {
     background-color: #2980b9;
 }
+
+.countdown-display-danger {
+    color: red;
+}
+.countdown-display-alert {
+    color: orange;
+}
+.countdown-display-attention {
+    color: yellow;
+}
+.countdown-display-normal {
+    color: #0073e6;
+}
+
+

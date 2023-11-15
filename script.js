@@ -1,17 +1,80 @@
 const timers = [];
 let editMode = false;
+let reload = false;
 let lastCountdownAdded;
+const settings = {
+  updateInterval: 60000
+}
+
+const dynamicParamsManager = (function () {
+  let dynamicParams = {
+    editMode: false,
+    reload: false,
+    lastUserInteraction: Date.now(),
+  };
+
+  function updateParams({ editMode, reload, lastUserInteraction }) {
+    dynamicParams.editMode = editMode !== undefined ? editMode : dynamicParams.editMode;
+    dynamicParams.reload = reload !== undefined ? reload : dynamicParams.reload;
+    dynamicParams.lastUserInteraction = lastUserInteraction !== undefined ? lastUserInteraction : dynamicParams.lastUserInteraction;
+  }
+
+  function getParams() {
+    return dynamicParams;
+  }
+
+  function updateLastUserInteraction() {
+    dynamicParams.lastUserInteraction = Date.now();
+  }
+
+  return {
+    updateParams,
+    getParams,
+    updateLastUserInteraction,
+  };
+})();
+
+// Function to be called by setInterval
+function intervalCallback() {
+  const { editMode, reload, lastUserInteraction } = dynamicParamsManager.getParams();
+  refreshPage(editMode, reload, lastUserInteraction);
+}
+
 
 document.addEventListener('DOMContentLoaded', function () {
-  setInterval(refreshPage, 60000);
+  updateSettings(settings);
+  setInterval(intervalCallback, settings.updateInterval);
   loadTimers();
   document.addEventListener('keydown', pasteTimers);
   document.addEventListener('keydown', copyTimers);
-  document.addEventListener('keydown', createNewTimer);
+  document.addEventListener('keydown', createNewTimerEvent);
+
 });
 
+// Add the new functions for settings
+function showGroup(groupName) {
+  // Load settings content dynamically
+  document.getElementById('content').innerHTML = `<h2>${groupName}</h2>`;
+}
+
+function closeSettings() {
+  // Hide settings window
+  document.getElementById('settingsWindow').style.display = 'none';
+}
+
+function openSettings() {
+  // Display settings window
+  document.getElementById('settingsWindow').style.display = 'block';
+  // Show the default settings group on open
+  showGroup('generalSettings');
+}
+
+function updateSettings(settings) {
+  //load settings online if Api is enabled.
+}
+
 function refreshPage() {
-  if(!editMode) {
+  if (!editMode && reload && lastUserInteraction > Date.now() - settings.updateInterval) {
     location.reload();
   }
 }
@@ -94,15 +157,14 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
     let t = timers[getIndex(timerElement)];
     let hour = formatTime(t.startTime, t.duration);
     let note = '';
-    if(t.note !== '' && t.note !== undefined && t.note !== 'undefined') {
-      note = '<br>' 
-      + formatNote(t.note)
-    } 
-    divElement.innerHTML = '' 
-    + hour.startTime + ' / ' + hour.endTime
-    + '<br>' 
-    + t.input 
-    + note;
+    if (t.note !== '' && t.note !== undefined && t.note !== 'undefined') {
+      note = '<br>'
+        + formatNote(t.note)
+    }
+    divElement.innerHTML = ''
+      + hour.startTime + ' / ' + hour.endTime + ' - ' + t.input
+      + '<br>'
+      + note;
   });
 
   timerElement.addEventListener('mouseout', function () {
@@ -117,12 +179,13 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
 
   divmain.appendChild(countdownDisplay);
 
-  divBottom.appendChild(deleteButton);
-  divBottom.appendChild(timerName);
   divBottom.appendChild(refreshButton);
+  divBottom.appendChild(timerName);
+  divBottom.appendChild(deleteButton);
 
   let timerInterval;
   let remainingTime = timerDuration - Math.floor((Date.now() - startTime) / 1000);
+  let currentClass = ""; // Initialize with an empty class
 
   function updateCountdown() {
     remainingTime = timerDuration - Math.floor((Date.now() - startTime) / 1000);
@@ -132,6 +195,24 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
       showNotification(timerName.textContent + " Done at " + hora)
     }
     countdownDisplay.textContent = remainingTime;
+
+    let percentage = (remainingTime / timerDuration) * 100;
+    // Calculate the new class based on percentage
+    let newClass = "-normal";
+    if (percentage < 10) {
+      newClass = "-danger";
+    } else if (percentage < 20) {
+      newClass = "-alert";
+    } else if (percentage < 30) {
+      newClass = "-attention";
+    }
+
+    // Update the class only if it has changed
+    if (newClass !== currentClass) {
+      countdownDisplay.className = "countdown-display" + newClass;
+      currentClass = newClass; // Update the current class
+    }
+
   }
 
   function startTimer() {
@@ -162,7 +243,7 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
     customPrompt.style.display = 'flex';
     promptInput.focus();
     promptInput.select();
-    
+
     // Clear previous event listeners
     promptInput.removeEventListener('keydown', handlePromptKeydown);
     promptInput.removeEventListener("blur", cancelPrompt);
@@ -174,7 +255,7 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
   }
 
   function handlePromptKeydown(event) {
-    if (event.key === 'Enter'|| event.key === 'Tab') {
+    if (event.key === 'Enter' || event.key === 'Tab') {
       submitPrompt();
     }
   }
@@ -189,14 +270,14 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
 
   function submitPrompt() {
 
-    switch(promptType.value) {
+    switch (promptType.value) {
       case "name":
         const newTimerName = promptInput.value;
         if (newTimerName !== null && newTimerName !== '') {
           timerName.textContent = newTimerName;
-  
+
           let timerIndex = getIndex(timerElement);
-  
+
           timers[timerIndex].name = newTimerName;
           saveTimers();
         }
@@ -205,16 +286,16 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
         const timerDurationInput = promptInput.value;
 
         let newDuration = getDuration(timerDurationInput);
-  
+
         if (!isNaN(newDuration) && newDuration > 0) {
           clearInterval(timerInterval);
           timerDurationDisplay.textContent = `${newDuration}`;
           startTime = Date.now();
           timerDuration = newDuration;
           input = timerDurationInput;
-  
+
           let timerIndex = getIndex(timerElement);
-  
+
           timers[timerIndex].startTime = startTime;
           timers[timerIndex].input = timerDurationInput;
           timers[timerIndex].duration = newDuration;
@@ -222,8 +303,8 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
           saveTimers();
           startTimer();
           openPrompt(timerName.textContent, "name");
-  
-          if(timerName.textContent === "Timer") {
+
+          if (timerName.textContent === "Timer") {
             openPrompt(timerName.textContent, "name");
           }
         }
@@ -233,13 +314,13 @@ function createTimerElement(timerId, name, timerDuration, startTime) {
         if (newNote === null) {
           newNote = ''
         }
-  
+
         timers[getIndex(timerElement)].note = newNote;
         saveTimers();
 
         break;
       default:
-          // code block
+      // code block
     }
 
     customPrompt.style.display = 'none';
