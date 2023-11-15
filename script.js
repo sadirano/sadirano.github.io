@@ -5,6 +5,15 @@ let lastCountdownAdded;
 const settings = {
   updateInterval: 60000,
 };
+const tagColorMap = loadColorMap()
+
+function loadColorMap() {
+  try {
+    return JSON.parse(localStorage.getItem('tagColorMap')) || {};
+  } catch (error) {
+    return tagColorMap = {}
+  }
+}
 
 const dynamicParamsManager = (function () {
   let dynamicParams = {
@@ -161,13 +170,29 @@ function createTimerElement(timer) {
   tagContainer.className = 'tag-container';
 
 
-  timerElement.addEventListener('mouseover', function () {
+  let displayTimeout;
+  let updateTimeout;
+
+  timerElement.addEventListener('mouseenter', function () {
+    clearTimeout(updateTimeout); // Clear update timeout if it was set
+    displayTimeout = setTimeout(displayNote, 2000);
+  });
+
+  timerElement.addEventListener('mouseout', function (event) {
+    // Check if the mouse is leaving the timerElement and not just entering a child element
+    if (!timerElement.contains(event.relatedTarget || event.toElement)) {
+      clearTimeout(displayTimeout);
+      updateTimeout = setTimeout(updateNote, 2000);
+    }
+  });
+
+  function displayNote() {
     let note = '';
     let hour = formatTime(timer.startTime, timer.duration);
     if (timer.note !== '' && timer.note !== undefined && timer.note !== 'undefined') {
       let noteLines = timer.note.split("\n");
       for (let line of noteLines) {
-        if (!line.trim().startsWith("img=")) { //ignore only the img config
+        if (!line.trim().startsWith("img=")) {
           note += line.trim() + '<br>';
         }
       }
@@ -175,9 +200,9 @@ function createTimerElement(timer) {
     divElement.innerHTML = ''
       + hour.startTime + ' / ' + hour.endTime + ' - ' + timer.input + '<br>'
       + note;
-  });
+  }
 
-  timerElement.addEventListener('mouseout', updateNote);
+
 
   function updateBackgroundImage() {
     if (timer.note !== '' && timer.note !== undefined && timer.note !== 'undefined') {
@@ -212,26 +237,8 @@ function createTimerElement(timer) {
   divBottom.appendChild(timerName);
   divBottom.appendChild(deleteButton);
 
-  function updateTags() {
-    // Code to update tags display
-    tagsDisplay.innerHTML = '';
-    // Add existing tags to the tags display
-    timer.tags.forEach(tag => {
-      const tagElement = document.createElement('span');
-      tagElement.className = 'tag';
-      tagElement.textContent = tag;
-      tagsDisplay.appendChild(tagElement);
-      // Add event listener to the tag icon for showing/hiding timers with the same tag
-      tagElement.addEventListener('click', function () {
-        toggleTaggedTimers(tag);
-      });
-    });
-    if (!hasTag(timer)) {
-      tagContainer.style.display = 'none';
-    }
-  }
 
-  updateTags();
+  updateTags(timer, tagsDisplay, tagContainer);
 
   let timerInterval;
   let remainingTime_ms = timer.duration - Date.now() - timer.startTime;
@@ -333,9 +340,9 @@ function createTimerElement(timer) {
     const allTags = new Set();
 
     timers.forEach(timer => {
-        timer.tags.forEach(tag => {
-          allTags.add(tag);
-        });
+      timer.tags.forEach(tag => {
+        allTags.add(tag);
+      });
     });
 
     return Array.from(allTags);
@@ -468,18 +475,6 @@ function createTimerElement(timer) {
     return matches || [];
   }
 
-  function toggleTaggedTimers(tag) {
-    const timerElements = document.getElementsByClassName('timer');
-    Array.from(timerElements).forEach(timerElement => {
-      const timer = timers.find(timer => timer.timerId === timerElement.dataset.timerId);
-      if (hasTag(timer) && timer.tags.includes(tag)) {
-        timerElement.style.display = timerElement.style.display === 'none' ? 'none' : 'flex';
-      } else {
-        timerElement.style.display = timerElement.style.display === 'none' ? 'flex' : 'none';
-      }
-    });
-  }
-
   customPrompt.style.display = 'none';
   // Clear event listener after submitting
   prompt.removeEventListener('keydown', handlePromptKeydown);
@@ -497,7 +492,8 @@ function createTimerElement(timer) {
   });
 
   updateNote();
-  function updateNote(event) {
+
+  function updateNote() {
     let note = '';
     if (timer.note !== '' && timer.note !== undefined && timer.note !== 'undefined') {
       let noteLines = timer.note.split("\n");
@@ -545,7 +541,7 @@ function loadTimers() {
   timersData
     .sort(function (a, b) { return (a.duration - Math.floor((Date.now() - a.startTime) / 1000)) - (b.duration - Math.floor((Date.now() - b.startTime) / 1000)) })
     .forEach((timer) => {
-      if(!hasTag(timer)) timer.tags = [];
+      if (!hasTag(timer)) timer.tags = [];
       const timerElement = createTimerElement(timer);
       timers.push(timer);
       timerList.appendChild(timerElement);
@@ -588,3 +584,124 @@ function applySearch() {
 function hasTag(timer) {
   return timer.tags !== undefined && timer.tags.length !== 0;
 }
+
+
+
+// Inside the updateTags function, after generating a new tag
+function updateTags(timer, tagsDisplay, tagContainer) {
+  // Code to update tags display
+  tagsDisplay.innerHTML = '';
+
+  // Add existing tags to the tags display
+  timer.tags.forEach(tag => {
+    const tagElement = document.createElement('span');
+    tagElement.className = 'tag';
+    tagElement.textContent = tag;
+    tagElement.style.backgroundColor = tagColorMap[tag].backgroundColor;
+    tagElement.style.color = tagColorMap[tag].fontColor;
+    tagsDisplay.appendChild(tagElement);
+
+    // Add event listener to the tag icon for showing/hiding timers with the same tag
+    tagElement.addEventListener('click', function () {
+      toggleTaggedTimers(tag);
+    });
+
+    // Add event listener for changing the tag color
+    tagElement.addEventListener('contextmenu', function (event) {
+      event.preventDefault();
+      showColorPicker(event, tag);
+    });
+
+    tagContainer.style.display = '';
+  });
+  if (!hasTag(timer)) {
+    tagContainer.style.display = 'none';
+  }
+}
+
+// Function to get the contrast color for font based on background color
+function getContrastColor(hexColor) {
+  const threshold = 130; // Adjust as needed
+  const rgb = hexToRgb(hexColor);
+  const luminance = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+  return luminance > threshold ? 'black' : 'white';
+}
+
+// Function to convert hex color to RGB
+function hexToRgb(hex) {
+  const bigint = parseInt(hex.substring(1), 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return { r, g, b };
+}
+
+
+// Add an event listener to the document to handle clicks outside the color picker
+document.addEventListener('click', function (event) {
+  const colorPicker = document.getElementById('colorPicker');
+  if (colorPicker && !colorPicker.contains(event.target)) {
+    colorPicker.remove();
+  }
+});
+
+function showColorPicker(event, tag) {
+  // Remove any existing color pickers
+  const existingColorPicker = document.getElementById('colorPicker');
+  if (existingColorPicker) {
+    existingColorPicker.remove();
+  }
+
+  // Create a color picker element
+  const colorPicker = document.createElement('input');
+  colorPicker.type = 'color';
+  colorPicker.id = 'colorPicker';
+
+  // Set initial color based on stored color or a default color
+  const storedColor = localStorage.getItem(`tagColor_${tag}`);
+  colorPicker.value = storedColor || '#000000';
+
+  // Position the color picker at a fixed position on the page
+  colorPicker.style.position = 'absolute';
+  colorPicker.style.left = `${event.pageX}px`;
+  colorPicker.style.top = `${event.pageY}px`;
+
+  // Add event listener for color changes
+  colorPicker.addEventListener('input', function () {
+    // Save the selected color to local storage
+    localStorage.setItem(`tagColor_${tag}`, colorPicker.value);
+  });
+
+  // Append the color picker to the document body
+  document.body.appendChild(colorPicker);
+
+  // Close the color picker on a second right-click or outside click
+  const clickHandler = function () {
+    // colorPicker.remove();
+    document.removeEventListener('click', clickHandler);
+  };
+
+  document.addEventListener('click', clickHandler);
+}
+
+
+let filterTag = "";
+
+function toggleTaggedTimers(tag) {
+  const timerElements = document.getElementsByClassName('timer');
+  if (filterTag === tag) {
+    Array.from(timerElements).forEach(timerElement => {
+      timerElement.style.display = 'flex';
+    });
+    filterTag = "";
+  } else {
+    Array.from(timerElements).forEach(timerElement => {
+      const timer = timers.find(timer => timer.timerId === timerElement.dataset.timerId);
+      if (hasTag(timer) && !timer.tags.includes(tag) && timerElement.style.display === 'flex') {
+        timerElement.style.display = 'none';
+      }
+    });
+    filterTag = tag;
+  }
+}
+

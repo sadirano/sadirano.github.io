@@ -9,7 +9,8 @@
     <script src="commons/time.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.11.1/typeahead.bundle.min.js"></script>
-
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 
@@ -17,14 +18,14 @@
 
     <div id="customPrompt">
         <div id="promptContent">
-            <textarea type="text" id="my-prompt"  placeholder="Add notes..."></textarea>
+            <textarea type="text" id="my-prompt" placeholder="Add notes..."></textarea>
             <input type="hidden" id="promptType">
         </div>
     </div>
 
     <div id="search-container">
-        <input type="text" id="search-input"  placeholder="Search..." oninput="applySearchWithDelay()">
-        <button onclick="toggleAdvancedSearch()" class="icon-button">▼</button>
+        <input type="text" id="search-input" placeholder="Search..." oninput="applySearchWithDelay()">
+        <span class="material-symbols-outlined" onclick="toggleAdvancedSearch()">tune</span>
     </div>
     <div id="advanced-search-container">
         <div id="advanced-search-options" style="display: none;">
@@ -33,11 +34,10 @@
         </div>
     </div>
     <div class="timer-container" id="timer-list"> </div>
-    
+
 
     <div class="floating-button">
-        <button id="newItem" onclick="newTimer()">⧖</button>
-        <button id="settingsButton" onclick="openSettings()">⚙</button>
+        <span class="material-symbols-outlined" id="newItem" onclick="newTimer()">timer</span>
     </div>
     <script src="script.js"></script>
 </body>
