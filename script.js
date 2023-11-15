@@ -2,16 +2,25 @@ const timers = [];
 let isEditMode = false;
 let shouldReload = false;
 let lastCountdownAdded;
-const settings = {
-  updateInterval: 60000,
-};
+const settings = loadSettings();
+
+function loadSettings() {
+  try {
+    return JSON.parse(localStorage.getItem('settings')) || {};
+  } catch (error) {
+    return {
+      updateInterval: 60000,
+    };
+  }
+}
+
 const tagColorMap = loadColorMap()
 
 function loadColorMap() {
   try {
     return JSON.parse(localStorage.getItem('tagColorMap')) || {};
   } catch (error) {
-    return tagColorMap = {}
+    return {}
   }
 }
 
@@ -47,8 +56,8 @@ function initializePage() {
   updateSettings(settings);
   setInterval(refreshPageIfNeeded, settings.updateInterval);
   loadTimers();
-  document.addEventListener('keydown', pasteTimers);
-  document.addEventListener('keydown', copyTimers);
+  document.addEventListener('keydown', backupToClipboard);
+  document.addEventListener('keydown', loadBackupFromClipboard);
   document.addEventListener('keydown', createNewTimerEvent);
 }
 
@@ -83,23 +92,33 @@ function refreshPageIfNeeded() {
     location.reload();
   }
 }
-function pasteTimers(event) {
+function backupToClipboard(event) {
   if (event.ctrlKey && event.key === 'e') {
     event.preventDefault();
+    let backup = {
+      timers : timers,
+      tagColorMap : tagColorMap,
+      settings : settings
+    } 
     navigator.clipboard
-      .writeText(localStorage.getItem('timers'));
+      .writeText(JSON.stringify(backup));
   }
 }
 
-function copyTimers(event) {
+function loadBackupFromClipboard(event) {
   if (event.ctrlKey && event.key === 'q') {
     event.preventDefault();
     navigator.clipboard
       .readText()
       .then(
-        (clipText) => (localStorage.setItem('timers', clipText))
+        (backup_string) => {
+          let backup = JSON.parse(backup_string);
+          localStorage.setItem('timers', backup.timers);
+          localStorage.setItem('tagColorMap', backup.tagColorMap);
+          localStorage.setItem('settings', backup.settings);
+          location.reload();
+        }
       );
-    refreshPage()
   }
 }
 
