@@ -159,14 +159,6 @@ input {
     border-radius: 5px;
 }
 
-#prompt {
-    width: 50%;
-    box-sizing: border-box;
-    margin-bottom: 10px;
-    background-color: #333;
-    color: white;
-}
-
 
 .floating-button {
     position: fixed;
@@ -198,17 +190,96 @@ input {
 .countdown-display-danger {
     color: red;
 }
+
 .countdown-display-alert {
     color: orange;
 }
+
 .countdown-display-attention {
     color: yellow;
 }
+
 .countdown-display-normal {
     color: #0073e6;
 }
 
+.timer-container {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+
 .vert-timer {
-    background-size: contain; /* You can use 'contain' or other values based on your preference */
-    background-position: center center; /* You can adjust the positioning */
+    background-size: contain;
+    /* You can use 'contain' or other values based on your preference */
+    background-position: center center;
+    /* You can adjust the positioning */
+}
+
+.tag-container {
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tag-icon {
+    font-size: 1.2em;
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+.tags-display {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.tag {
+    background-color: #3498db;
+    color: #fff;
+    padding: 2px 5px;
+    margin: 2px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.tag:hover {
+    background-color: #2980b9;
+}
+
+#search-container {
+    margin: 10px;
+    text-align: center;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+}
+
+#my-prompt,
+#search-input,
+#min-remaining,
+#max-remaining {
+    width: 50%;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+    background-color: #333;
+    color: white;
+}
+
+
+#advanced-search-container {
+    margin: 10px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+}
+
+#advanced-search-options {
+    display: flex;
+    justify-content: center;
+    margin-top: 5px;
+}
+
+#advanced-search-options label {
+    margin-right: 5px;
 }

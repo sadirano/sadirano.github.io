@@ -7,18 +7,33 @@
     <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
     <script src="commons/utils.js"></script>
     <script src="commons/time.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.11.1/typeahead.bundle.min.js"></script>
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 
 <body>
-    <div class="timer-container" id="timer-list"> </div>
 
     <div id="customPrompt">
         <div id="promptContent">
-            <textarea type="text" id="prompt"></textarea>
+            <textarea type="text" id="my-prompt"  placeholder="Add notes..."></textarea>
             <input type="hidden" id="promptType">
         </div>
     </div>
+
+    <div id="search-container">
+        <input type="text" id="search-input"  placeholder="Search..." oninput="applySearchWithDelay()">
+        <button onclick="toggleAdvancedSearch()" class="icon-button">▼</button>
+    </div>
+    <div id="advanced-search-container">
+        <div id="advanced-search-options" style="display: none;">
+            <input id="min-remaining" id="sad-input" min="0" placeholder="Min Time" oninput="applySearchWithDelay()">
+            <input id="max-remaining" id="sad-input" min="0" placeholder="Max Time" oninput="applySearchWithDelay()">
+        </div>
+    </div>
+    <div class="timer-container" id="timer-list"> </div>
+    
 
     <div class="floating-button">
         <button id="newItem" onclick="newTimer()">⧖</button>

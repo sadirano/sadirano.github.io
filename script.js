@@ -1,21 +1,21 @@
 const timers = [];
-let editMode = false;
-let reload = false;
+let isEditMode = false;
+let shouldReload = false;
 let lastCountdownAdded;
 const settings = {
-  updateInterval: 60000
-}
+  updateInterval: 60000,
+};
 
 const dynamicParamsManager = (function () {
   let dynamicParams = {
-    editMode: false,
-    reload: false,
+    isEditMode: false,
+    shouldReload: false,
     lastUserInteraction: Date.now(),
   };
 
-  function updateParams({ editMode, reload, lastUserInteraction }) {
-    dynamicParams.editMode = editMode !== undefined ? editMode : dynamicParams.editMode;
-    dynamicParams.reload = reload !== undefined ? reload : dynamicParams.reload;
+  function updateParams({ isEditMode, shouldReload, lastUserInteraction }) {
+    dynamicParams.isEditMode = isEditMode !== undefined ? isEditMode : dynamicParams.isEditMode;
+    dynamicParams.shouldReload = shouldReload !== undefined ? shouldReload : dynamicParams.shouldReload;
     dynamicParams.lastUserInteraction = lastUserInteraction !== undefined ? lastUserInteraction : dynamicParams.lastUserInteraction;
   }
 
@@ -34,52 +34,46 @@ const dynamicParamsManager = (function () {
   };
 })();
 
-// Function to be called by setInterval
-function intervalCallback() {
-  const { editMode, reload, lastUserInteraction } = dynamicParamsManager.getParams();
-  refreshPage(editMode, reload, lastUserInteraction);
-}
-
-
-document.addEventListener('DOMContentLoaded', function () {
+function initializePage() {
   updateSettings(settings);
-  setInterval(intervalCallback, settings.updateInterval);
+  setInterval(refreshPageIfNeeded, settings.updateInterval);
   loadTimers();
   document.addEventListener('keydown', pasteTimers);
   document.addEventListener('keydown', copyTimers);
   document.addEventListener('keydown', createNewTimerEvent);
+}
 
-});
+document.addEventListener('DOMContentLoaded', initializePage);
 
-// Add the new functions for settings
-function showGroup(groupName) {
-  // Load settings content dynamically
+
+function updateDynamicParams({ isEditMode, shouldReload, lastUserInteraction }) {
+  dynamicParamsManager.updateParams({ isEditMode, shouldReload, lastUserInteraction });
+}
+
+function displayGroup(groupName) {
   document.getElementById('content').innerHTML = `<h2>${groupName}</h2>`;
 }
 
-function closeSettings() {
-  // Hide settings window
+function hideSettings() {
   document.getElementById('settingsWindow').style.display = 'none';
 }
 
-function openSettings() {
-  // Display settings window
-  document.getElementById('settingsWindow').style.display = 'block';
-  // Show the default settings group on open
-  showGroup('generalSettings');
+function showSettings() {
+  const settingsWindow = document.getElementById('settingsWindow');
+  settingsWindow.style.display = 'block';
+  displayGroup('generalSettings');
 }
-
 function updateSettings(settings) {
-  //load settings online if Api is enabled.
+  // Load settings online if the API is enabled.
 }
 
-function refreshPage() {
-  if (!editMode && reload && lastUserInteraction > Date.now() - settings.updateInterval) {
+function refreshPageIfNeeded() {
+  const { isEditMode, shouldReload, lastUserInteraction } = dynamicParamsManager.getParams();
+  const { updateInterval } = settings;
+  if (!isEditMode && shouldReload && lastUserInteraction > Date.now() - updateInterval) {
     location.reload();
   }
 }
-
-
 function pasteTimers(event) {
   if (event.ctrlKey && event.key === 'e') {
     event.preventDefault();
@@ -113,7 +107,15 @@ function newTimer() {
   const durationInput = 60;
   let duration = getDuration(durationInput);
   const startTime = Date.now();
-  let timer = { timerId: generateRandomId(), name: timerName, duration: duration, startTime, input: durationInput, note: '' }
+  let timer = {
+    timerId: generateRandomId(),
+    name: timerName,
+    duration: duration,
+    startTime: startTime,
+    input: durationInput,
+    note: '',
+    tags: []
+  };
 
   const timerElement = createTimerElement(timer);
   timers.push(timer);
@@ -155,6 +157,10 @@ function createTimerElement(timer) {
   const divElement = document.createElement('inputDiv');
   divElement.className = 'div-hint';
 
+  const tagContainer = document.createElement('div');
+  tagContainer.className = 'tag-container';
+
+
   timerElement.addEventListener('mouseover', function () {
     let note = '';
     let hour = formatTime(timer.startTime, timer.duration);
@@ -171,7 +177,7 @@ function createTimerElement(timer) {
       + note;
   });
 
-  timerElement.addEventListener('mouseout',updateNote);
+  timerElement.addEventListener('mouseout', updateNote);
 
   function updateBackgroundImage() {
     if (timer.note !== '' && timer.note !== undefined && timer.note !== 'undefined') {
@@ -188,11 +194,16 @@ function createTimerElement(timer) {
     divgroup.style.backgroundImage = ``;
   }
 
+  const tagsDisplay = document.createElement('div');
+  tagsDisplay.className = 'tags-display';
+
+  tagContainer.appendChild(tagsDisplay);
 
   timerElement.appendChild(divgroup);
 
   divgroup.appendChild(divmain);
   divgroup.appendChild(divBottom);
+  divgroup.appendChild(tagContainer);
   divgroup.appendChild(divElement);
 
   divmain.appendChild(countdownDisplay);
@@ -201,20 +212,47 @@ function createTimerElement(timer) {
   divBottom.appendChild(timerName);
   divBottom.appendChild(deleteButton);
 
-  let timerInterval;
-  let remainingTime = timer.duration - Math.floor((Date.now() - timer.startTime) / 1000);
-  let currentClass = ""; // Initialize with an empty class
-
-  function updateCountdown() {
-    remainingTime = timer.duration - Math.floor((Date.now() - timer.startTime) / 1000);
-    if (remainingTime === 0) {
-      let options = { hour: "2-digit", minute: "2-digit" };
-      let hora = new Date().toLocaleString("en-us", options)
-      showNotification(timerName.textContent + " Done at " + hora)
+  function updateTags() {
+    // Code to update tags display
+    tagsDisplay.innerHTML = '';
+    // Add existing tags to the tags display
+    timer.tags.forEach(tag => {
+      const tagElement = document.createElement('span');
+      tagElement.className = 'tag';
+      tagElement.textContent = tag;
+      tagsDisplay.appendChild(tagElement);
+      // Add event listener to the tag icon for showing/hiding timers with the same tag
+      tagElement.addEventListener('click', function () {
+        toggleTaggedTimers(tag);
+      });
+    });
+    if (!hasTag(timer)) {
+      tagContainer.style.display = 'none';
     }
-    countdownDisplay.textContent = remainingTime;
+  }
 
-    let percentage = (remainingTime / timer.duration) * 100;
+  updateTags();
+
+  let timerInterval;
+  let remainingTime_ms = timer.duration - Date.now() - timer.startTime;
+  let currentClass = ""; // Initialize with an empty class
+  let notified = false;
+  function updateCountdown(displayTimeFormat = "hhmmss") {
+    remainingTime_ms = timer.duration * 1000 - (Date.now() - timer.startTime);
+
+    if (Math.floor(remainingTime_ms / 1000) === 0 && !notified) {
+      let options = { hour: "2-digit", minute: "2-digit" };
+      let hora = new Date().toLocaleString("en-us", options);
+      showNotification(timerName.textContent + " Done at " + hora);
+      notified = true;
+    }
+
+    let formattedTime = millisecondsToTime(remainingTime_ms, displayTimeFormat);
+
+    countdownDisplay.textContent = formattedTime;
+
+    let percentage = (remainingTime_ms / timer.duration * 1000) * 100;
+
     // Calculate the new class based on percentage
     let newClass = "-normal";
     if (percentage < 10) {
@@ -230,16 +268,53 @@ function createTimerElement(timer) {
       countdownDisplay.className = "countdown-display" + newClass;
       currentClass = newClass; // Update the current class
     }
-
   }
+
+  function millisecondsToTime(milliseconds, format = "hhmmss") {
+    let totalSeconds = Math.floor(milliseconds / 1000);
+    let hours = Math.floor(totalSeconds / 3600);
+    let minutes = Math.floor((totalSeconds % 3600) / 60);
+    let seconds = totalSeconds % 60;
+    let millisecondsRemainder = milliseconds % 1000;
+
+    let formattedTime = "";
+
+    if (format === "hhmmss") {
+      if (hours != 0) {
+        formattedTime += `${padNumber(hours)}:`;
+      }
+      if (minutes != 0 || hours != 0) {
+        formattedTime += `${padNumber(minutes)}:`;
+      }
+      formattedTime += `${padNumber(seconds)}`;
+    } else if (format === "hh:mm:ss.mmm") {
+      if (hours != 0) {
+        formattedTime += `${padNumber(hours)}:`;
+      }
+      if (minutes != 0 || hours != 0) {
+        formattedTime += `${padNumber(minutes)}:`;
+      }
+      formattedTime += `${padNumber(seconds)}.${padNumber(millisecondsRemainder, 3)}`;
+    }
+    if (milliseconds < 0) formattedTime = '-' + formattedTime;
+
+    return formattedTime;
+  }
+
+
+  function padNumber(number, length = 2) {
+    return String(Math.abs(number)).padStart(length, '0');
+  }
+
+
 
   function startTimer() {
     updateCountdown();
-    setInterval(updateCountdown, 330);
+    setInterval(updateCountdown, 50);
   }
 
   const customPrompt = document.getElementById('customPrompt');
-  const prompt = document.getElementById('prompt');
+  const prompt = document.getElementById('my-prompt');
   const promptType = document.getElementById('promptType');
 
   timerName.addEventListener('click', function () {
@@ -254,10 +329,21 @@ function createTimerElement(timer) {
     openPrompt(timer.note, "note");
   });
 
+  function getAllTags() {
+    const allTags = new Set();
+
+    timers.forEach(timer => {
+        timer.tags.forEach(tag => {
+          allTags.add(tag);
+        });
+    });
+
+    return Array.from(allTags);
+  }
 
   // Updated openPrompt function to handle multiline notes input
   function openPrompt(initialValue, elementToUpdate) {
-    editMode = true;
+    isEditMode = true;
     customPrompt.style.display = 'flex';
     promptType.value = elementToUpdate;
 
@@ -266,12 +352,34 @@ function createTimerElement(timer) {
     prompt.removeEventListener("blur", cancelPrompt);
     document.removeEventListener('keydown', cancelPrompt);
 
-//    prompt.textContent = initialValue;
+    //    prompt.textContent = initialValue;
     prompt.value = initialValue;
 
     // Create a textarea for notes input
     if (elementToUpdate === "note") {
       prompt.rows = 5; // Set the number of rows as needed
+      // Initialize autocomplete for tags
+      const tags = getAllTags();
+      const tagInput = new Bloodhound({
+        datumTokenizer: Bloodhound.tokenizers.whitespace,
+        queryTokenizer: Bloodhound.tokenizers.whitespace,
+        local: tags,
+      });
+
+      tagInput.initialize();
+
+      $('#prompt').typeahead(
+        {
+          hint: true,
+          highlight: true,
+          minLength: 1,
+        },
+        {
+          name: 'tags',
+          source: tagInput.ttAdapter(),
+        }
+      );
+
     } else {
       prompt.rows = 1;
     }
@@ -287,14 +395,14 @@ function createTimerElement(timer) {
   }
 
   function handlePromptKeydown(event) {
-    if ((event.key === 'Enter' && !event.shiftKey ) || event.key === 'Tab') {
+    if ((event.key === 'Enter' && !event.shiftKey) || event.key === 'Tab') {
       submitPrompt();
     }
   }
 
   function cancelPrompt(event) {
     if (event.key === "Escape" || event.type === "blur") {
-      editMode = false;
+      isEditMode = false;
       customPrompt.style.display = 'none';
       prompt.removeEventListener('keydown', handlePromptKeydown);
     }
@@ -336,8 +444,12 @@ function createTimerElement(timer) {
         break;
       case "note":
         const newNote = prompt.value;
+        // Extract tags from the note and update the timer tags
+        const newTags = extractTags(newNote);
+        timer.tags = newTags;
         timer.note = newNote;
         updateNote(1);
+        updateTags(); // Update the tags display
         updateBackgroundImage()
         saveTimers();
         break;
@@ -346,13 +458,32 @@ function createTimerElement(timer) {
     }
 
     customPrompt.style.display = 'none';
-    editMode = false;
+    isEditMode = false;
+  }
+
+  function extractTags(note) {
+    // Regex to find all content after hashtags in the note
+    const tagRegex = /#(.+?(?=\n|\r\n|$))/g;
+    const matches = note.match(tagRegex);
+    return matches || [];
+  }
+
+  function toggleTaggedTimers(tag) {
+    const timerElements = document.getElementsByClassName('timer');
+    Array.from(timerElements).forEach(timerElement => {
+      const timer = timers.find(timer => timer.timerId === timerElement.dataset.timerId);
+      if (hasTag(timer) && timer.tags.includes(tag)) {
+        timerElement.style.display = timerElement.style.display === 'none' ? 'none' : 'flex';
+      } else {
+        timerElement.style.display = timerElement.style.display === 'none' ? 'flex' : 'none';
+      }
+    });
   }
 
   customPrompt.style.display = 'none';
   // Clear event listener after submitting
   prompt.removeEventListener('keydown', handlePromptKeydown);
-  editMode = false;
+  isEditMode = false;
 
   // Delete button functionality
   deleteButton.addEventListener('click', function () {
@@ -372,7 +503,7 @@ function createTimerElement(timer) {
       let noteLines = timer.note.split("\n");
       for (let line of noteLines) {
         if (line.trim().startsWith("!")) {
-          note += line.substring(1).trim() +'<br>';
+          note += line.substring(1).trim() + '<br>';
         }
       }
     }
@@ -388,8 +519,8 @@ function createTimerElement(timer) {
     durationDisplay.textContent = `${newDuration}`;
     timer.startTime = Date.now();
     timer.duration = newDuration;
+    notified = false;
 
-    updateCountdown();
     startTimer();
     saveTimers();
   });
@@ -413,14 +544,47 @@ function loadTimers() {
 
   timersData
     .sort(function (a, b) { return (a.duration - Math.floor((Date.now() - a.startTime) / 1000)) - (b.duration - Math.floor((Date.now() - b.startTime) / 1000)) })
-    .forEach((timerData) => {
-      const timerId = timerData.timerId;
-      const startTime = timerData.startTime;
-      const timer = { timerId, name: timerData.name, duration: timerData.duration, startTime, input: timerData.input, note: timerData.note };
+    .forEach((timer) => {
+      if(!hasTag(timer)) timer.tags = [];
       const timerElement = createTimerElement(timer);
       timers.push(timer);
       timerList.appendChild(timerElement);
     });
 }
 
+function toggleAdvancedSearch() {
+  const advancedSearchOptions = document.getElementById('advanced-search-options');
+  advancedSearchOptions.style.display = advancedSearchOptions.style.display === 'none' ? 'flex' : 'none';
+}
 
+let searchTimer;
+
+function applySearchWithDelay() {
+  // Clear previous timer to avoid premature execution
+  clearTimeout(searchTimer);
+
+  searchTimer = setTimeout(applySearch, 500);
+}
+
+function applySearch() {
+  const searchInput = document.getElementById('search-input').value.toLowerCase();
+  const timerElements = document.getElementsByClassName('timer');
+  const minRemaining = parseInt(document.getElementById('min-remaining').value) || 0;
+  const maxRemaining = parseInt(document.getElementById('max-remaining').value) || Infinity;
+
+  Array.from(timerElements).forEach(timerElement => {
+    const timer = timers.find(timer => timer.timerId === timerElement.dataset.timerId);
+    const tags_text = timer.tags === undefined ? '' : timer.tags.join(' ');
+    const timerText = `${timer.name} ${timer.note} ${timer.input} ${tags_text}`.toLowerCase();
+
+    // Check if the timer's text contains the search input and is within the remaining time range
+    const meetsSearchCriteria = timerText.includes(searchInput);
+    const meetsTimeCriteria = minRemaining <= timer.duration && timer.duration <= maxRemaining;
+
+    timerElement.style.display = meetsSearchCriteria && meetsTimeCriteria ? 'flex' : 'none';
+  });
+}
+
+function hasTag(timer) {
+  return timer.tags !== undefined && timer.tags.length !== 0;
+}
