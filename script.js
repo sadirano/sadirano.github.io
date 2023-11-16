@@ -13,6 +13,9 @@ function loadSettings() {
     };
   }
 }
+function saveSettings() {
+  localStorage.setItem('settings', JSON.stringify(settings));
+}
 
 const tagColorMap = loadColorMap()
 
@@ -20,8 +23,12 @@ function loadColorMap() {
   try {
     return JSON.parse(localStorage.getItem('tagColorMap')) || {};
   } catch (error) {
-    return {}
+    return {};
   }
+}
+
+function saveColorMap() {
+  localStorage.setItem('tagColorMap', JSON.stringify(tagColorMap));
 }
 
 const dynamicParamsManager = (function () {
@@ -96,10 +103,10 @@ function backupToClipboard(event) {
   if (event.ctrlKey && event.key === 'e') {
     event.preventDefault();
     let backup = {
-      timers : timers,
-      tagColorMap : tagColorMap,
-      settings : settings
-    } 
+      timers: timers,
+      tagColorMap: tagColorMap,
+      settings: settings
+    }
     navigator.clipboard
       .writeText(JSON.stringify(backup));
   }
@@ -113,9 +120,9 @@ function loadBackupFromClipboard(event) {
       .then(
         (backup_string) => {
           let backup = JSON.parse(backup_string);
-          localStorage.setItem('timers', backup.timers);
-          localStorage.setItem('tagColorMap', backup.tagColorMap);
-          localStorage.setItem('settings', backup.settings);
+          localStorage.setItem('timers', JSON.stringify(backup.timers));
+          localStorage.setItem('tagColorMap', JSON.stringify(backup.tagColorMap));
+          localStorage.setItem('settings', JSON.stringify(backup.settings));
           location.reload();
         }
       );
@@ -165,14 +172,15 @@ function createTimerElement(timer) {
   divBottom.className = 'div-bottom';
   const timerName = document.createElement('h5');
   timerName.textContent = timer.name;
+  timerName.tabIndex = 0;
 
-  const deleteButton = document.createElement('button');
-  deleteButton.innerHTML = '&#10006;';
-  deleteButton.className = 'icon-button delete-button';
+  const refreshButton = document.createElement('span');
+  refreshButton.className = 'material-symbols-outlined refresh-button';
+  refreshButton.innerHTML = 'replay';
 
-  const refreshButton = document.createElement('button');
-  refreshButton.innerHTML = '&#8634;';
-  refreshButton.className = 'icon-button refresh-button';
+  const deleteButton = document.createElement('span');
+  deleteButton.className = 'material-symbols-outlined delete-button';
+  deleteButton.innerHTML = 'delete';
 
   const divmain = document.createElement('div');
   divmain.className = 'div-main';
@@ -344,15 +352,17 @@ function createTimerElement(timer) {
   const promptType = document.getElementById('promptType');
 
   timerName.addEventListener('click', function () {
-    openPrompt(timer.name, "name");
+    openPrompt(timer.name + '\n' + timer.note, "note");
   });
 
+  timerName.addEventListener('keypress', function (event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      openPrompt(timer.name + '\n' + timer.note, "note");
+    }
+  });
   countdownDisplay.addEventListener('click', function () {
     openPrompt(timer.input, "duration");
-  });
-
-  divElement.addEventListener('click', function () {
-    openPrompt(timer.note, "note");
   });
 
   function getAllTags() {
@@ -372,11 +382,6 @@ function createTimerElement(timer) {
     isEditMode = true;
     customPrompt.style.display = 'flex';
     promptType.value = elementToUpdate;
-
-    // Clear previous event listeners
-    prompt.removeEventListener('keydown', handlePromptKeydown);
-    prompt.removeEventListener("blur", cancelPrompt);
-    document.removeEventListener('keydown', cancelPrompt);
 
     //    prompt.textContent = initialValue;
     prompt.value = initialValue;
@@ -430,22 +435,13 @@ function createTimerElement(timer) {
     if (event.key === "Escape" || event.type === "blur") {
       isEditMode = false;
       customPrompt.style.display = 'none';
-      prompt.removeEventListener('keydown', handlePromptKeydown);
+      clearListeners();
     }
   }
 
   // Updated submitPrompt function to handle notes changes
   function submitPrompt() {
     switch (promptType.value) {
-      case "name":
-        const newTimerName = prompt.value;
-        if (newTimerName !== null && newTimerName !== '') {
-          timerName.textContent = newTimerName;
-
-          timer.name = newTimerName;
-          saveTimers();
-        }
-        break;
       case "duration":
         const durationInput = prompt.value;
 
@@ -461,22 +457,31 @@ function createTimerElement(timer) {
           updateCountdown();
           saveTimers();
           startTimer();
-          openPrompt(timerName.textContent, "name");
-
-          if (timerName.textContent === "Timer") {
-            openPrompt(timerName.textContent, "name");
-          }
         }
         break;
       case "note":
-        const newNote = prompt.value;
+        const inputValue = prompt.value;
+
+        // Split the input into lines
+        const lines = inputValue.split('\n');
+
+        // Extract the first line as the timer name
+        const newTimerName = lines[0].trim();
+        if (newTimerName !== null && newTimerName !== '') {
+          timerName.textContent = newTimerName;
+          timer.name = newTimerName;
+        }
+
+        // Extract the rest of the lines as notes
+        const newNote = lines.slice(1).join('\n').trim();
+
         // Extract tags from the note and update the timer tags
         const newTags = extractTags(newNote);
         timer.tags = newTags;
         timer.note = newNote;
-        updateNote(1);
-        updateTags(); // Update the tags display
-        updateBackgroundImage()
+        updateNote();
+        updateTags(timer, tagsDisplay, tagContainer); // Update the tags display
+        updateBackgroundImage();
         saveTimers();
         break;
 
@@ -485,7 +490,19 @@ function createTimerElement(timer) {
 
     customPrompt.style.display = 'none';
     isEditMode = false;
+
+    clearListeners()
+
   }
+
+  function clearListeners() {
+    // Clear previous event listeners
+    prompt.removeEventListener('keydown', handlePromptKeydown);
+    prompt.removeEventListener("blur", cancelPrompt);
+    document.removeEventListener('keydown', cancelPrompt);
+  }
+
+
 
   function extractTags(note) {
     // Regex to find all content after hashtags in the note
@@ -584,19 +601,23 @@ function applySearchWithDelay() {
 function applySearch() {
   const searchInput = document.getElementById('search-input').value.toLowerCase();
   const timerElements = document.getElementsByClassName('timer');
-  const minRemaining = parseInt(document.getElementById('min-remaining').value) || 0;
-  const maxRemaining = parseInt(document.getElementById('max-remaining').value) || Infinity;
+  const minRemaining = getDuration(document.getElementById('min-remaining').value);
+  const maxRemaining = getDuration(document.getElementById('max-remaining').value);
 
   Array.from(timerElements).forEach(timerElement => {
+    if (timerElement.style.display === 'none' && searchInput !== '') return;
     const timer = timers.find(timer => timer.timerId === timerElement.dataset.timerId);
     const tags_text = timer.tags === undefined ? '' : timer.tags.join(' ');
     const timerText = `${timer.name} ${timer.note} ${timer.input} ${tags_text}`.toLowerCase();
 
+    const remainingSeconds = timer.duration - Math.floor(Date.now() - timer.startTime) / 1000;
+
     // Check if the timer's text contains the search input and is within the remaining time range
     const meetsSearchCriteria = timerText.includes(searchInput);
-    const meetsTimeCriteria = minRemaining <= timer.duration && timer.duration <= maxRemaining;
+    const meetsMinTimeCriteria = isNaN(minRemaining) || minRemaining <= remainingSeconds;
+    const meetsMaxTimeCriteria = isNaN(maxRemaining) || remainingSeconds <= maxRemaining;
 
-    timerElement.style.display = meetsSearchCriteria && meetsTimeCriteria ? 'flex' : 'none';
+    timerElement.style.display = meetsSearchCriteria && meetsMinTimeCriteria && meetsMaxTimeCriteria ? 'flex' : 'none';
   });
 }
 
@@ -616,6 +637,7 @@ function updateTags(timer, tagsDisplay, tagContainer) {
     const tagElement = document.createElement('span');
     tagElement.className = 'tag';
     tagElement.textContent = tag;
+    if (tagColorMap[tag] === undefined) getRandomColor(tag);
     tagElement.style.backgroundColor = tagColorMap[tag].backgroundColor;
     tagElement.style.color = tagColorMap[tag].fontColor;
     tagsDisplay.appendChild(tagElement);
@@ -638,17 +660,66 @@ function updateTags(timer, tagsDisplay, tagContainer) {
   }
 }
 
-// Function to get the contrast color for font based on background color
-function getContrastColor(hexColor) {
-  const threshold = 130; // Adjust as needed
-  const rgb = hexToRgb(hexColor);
-  const luminance = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
-  return luminance > threshold ? 'black' : 'white';
+
+function getRandomColor(tag) {
+  const isValidColor = (r, g, b) => {
+    // Check if the color is not too bright and not too similar to other colors
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness < 128 && !isColorTooSimilar(r, g, b);
+  };
+
+  const isColorTooSimilar = (r, g, b) => {
+    // Check if the color is too similar to existing colors
+    for (const existingColor in tagColorMap) {
+      const existingRGB = hexToRgb(tagColorMap[existingColor]);
+      const colorDifference = Math.abs(r - existingRGB.r) + Math.abs(g - existingRGB.g) + Math.abs(b - existingRGB.b);
+      if (colorDifference < 50) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const letters = '0123456789ABCDEF';
+  let color;
+  let count = 0;
+  do {
+    color = '#';
+    for (let i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    var rgb = hexToRgb(color);
+    count++;
+  } while (!isValidColor(rgb.r, rgb.g, rgb.b) && count < 20);
+
+  // Adjust font color based on brightness
+  const fontColor = rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114 > 186 ? 'black' : 'white';
+
+  const colorInfo = {
+    backgroundColor: color,
+    fontColor,
+  };
+
+  // Update tagColorMap with the new color info
+  tagColorMap[tag] = colorInfo;
+
+  // Save tagColorMap to localStorage
+  localStorage.setItem('tagColorMap', JSON.stringify(tagColorMap));
+
+  return colorInfo;
 }
+
+// // Function to get the contrast color for font based on background color
+// function getContrastColor(hexColor) {
+//   const threshold = 130; // Adjust as needed
+//   const rgb = hexToRgb(hexColor);
+//   const luminance = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+//   return luminance > threshold ? 'black' : 'white';
+// }
 
 // Function to convert hex color to RGB
 function hexToRgb(hex) {
-  const bigint = parseInt(hex.substring(1), 16);
+  const bigint = hex;
   const r = (bigint >> 16) & 255;
   const g = (bigint >> 8) & 255;
   const b = bigint & 255;
@@ -666,10 +737,18 @@ document.addEventListener('click', function (event) {
 
 function showColorPicker(event, tag) {
   // Remove any existing color pickers
-  const existingColorPicker = document.getElementById('colorPicker');
+  const existingColorPicker = document.getElementById('colorPickerContainer');
   if (existingColorPicker) {
     existingColorPicker.remove();
   }
+
+  // Create a container div for the color picker and confirm button
+  const colorPickerContainer = document.createElement('div');
+  
+  colorPickerContainer.id = 'colorPickerContainer';
+  colorPickerContainer.style.position = 'absolute';
+  colorPickerContainer.style.left = `${event.pageX}px`;
+  colorPickerContainer.style.top = `${event.pageY}px`;
 
   // Create a color picker element
   const colorPicker = document.createElement('input');
@@ -677,36 +756,60 @@ function showColorPicker(event, tag) {
   colorPicker.id = 'colorPicker';
 
   // Set initial color based on stored color or a default color
-  const storedColor = localStorage.getItem(`tagColor_${tag}`);
+  const storedColor = tagColorMap[tag].backgroundColor;
   colorPicker.value = storedColor || '#000000';
-
-  // Position the color picker at a fixed position on the page
-  colorPicker.style.position = 'absolute';
-  colorPicker.style.left = `${event.pageX}px`;
-  colorPicker.style.top = `${event.pageY}px`;
 
   // Add event listener for color changes
   colorPicker.addEventListener('input', function () {
     // Save the selected color to local storage
-    localStorage.setItem(`tagColor_${tag}`, colorPicker.value);
+    tagColorMap[tag].backgroundColor = colorPicker.value;
   });
 
-  // Append the color picker to the document body
-  document.body.appendChild(colorPicker);
+  // Create a span for the confirm button
+  const confirmButton = document.createElement('span');
+  confirmButton.id = 'colorPickerConfirm';
+  confirmButton.className = 'material-symbols-outlined';
+  confirmButton.innerHTML = 'check';
+  confirmButton.addEventListener('click', function () {
+    // Save the selected color to local storage
+    tagColorMap[tag].backgroundColor = colorPicker.value;
+    // Remove the color picker container from the document
+    colorPickerContainer.remove();
+    // Save the color map to local storage
+    saveColorMap();
+    // Reload the page
+    location.reload();
+  });
 
-  // Close the color picker on a second right-click or outside click
-  const clickHandler = function () {
-    // colorPicker.remove();
-    document.removeEventListener('click', clickHandler);
-  };
+  // Append the color picker and confirm button to the container
+  colorPickerContainer.appendChild(colorPicker);
+  colorPickerContainer.appendChild(confirmButton);
 
-  document.addEventListener('click', clickHandler);
+  // Append the container to the document body
+  document.body.appendChild(colorPickerContainer);
+
+  function colorConfirmHandler(event) {
+    if (event.key === 'Enter') {
+      // Save the selected color to local storage
+      tagColorMap[tag].backgroundColor = colorPicker.value;
+      // Remove the color picker container from the document
+      colorPickerContainer.remove();
+      // Save the color map to local storage
+      saveColorMap();
+      // Reload the page
+      location.reload();
+    }
+  }
+
+  // Add event listener for confirming with Enter key
+  document.addEventListener('keypress', colorConfirmHandler);
 }
 
 
 let filterTag = "";
 
 function toggleTaggedTimers(tag) {
+  applySearch();
   const timerElements = document.getElementsByClassName('timer');
   if (filterTag === tag) {
     Array.from(timerElements).forEach(timerElement => {
@@ -716,7 +819,7 @@ function toggleTaggedTimers(tag) {
   } else {
     Array.from(timerElements).forEach(timerElement => {
       const timer = timers.find(timer => timer.timerId === timerElement.dataset.timerId);
-      if (hasTag(timer) && !timer.tags.includes(tag) && timerElement.style.display === 'flex') {
+      if (!hasTag(timer) || hasTag(timer) && !timer.tags.includes(tag) && timerElement.style.display === 'flex') {
         timerElement.style.display = 'none';
       }
     });
@@ -724,3 +827,11 @@ function toggleTaggedTimers(tag) {
   }
 }
 
+
+// Add an event listener to the document to handle clicks outside the color picker and confirm button
+document.addEventListener('click', function (event) {
+  const colorPickerContainer = document.getElementById('colorPickerContainer');
+  if (colorPickerContainer && !colorPickerContainer.contains(event.target)) {
+    colorPickerContainer.remove();
+  }
+});

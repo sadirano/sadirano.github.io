@@ -19,6 +19,7 @@
     <div id="customPrompt">
         <div id="promptContent">
             <textarea type="text" id="my-prompt" placeholder="Add notes..."></textarea>
+            <span class="material-symbols-outlined" style="display: none;">check</span>
             <input type="hidden" id="promptType">
         </div>
     </div>
@@ -35,9 +36,11 @@
     </div>
     <div class="timer-container" id="timer-list"> </div>
 
-
     <div class="floating-button">
-        <span class="material-symbols-outlined" id="newItem" onclick="newTimer()">timer</span>
+        <span class="material-symbols-outlined" onclick="newTimer()">timer</span>
+        <span class="material-symbols-outlined">settings</span>
+        <span class="material-symbols-outlined">cloud_download</span>
+        <span class="material-symbols-outlined">cloud_upload</span>
     </div>
     <script src="script.js"></script>
 </body>

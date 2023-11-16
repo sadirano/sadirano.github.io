@@ -37,14 +37,9 @@ main {
     display: flex;
 }
 
-label,
 input {
-    margin-bottom: 10px;
     color: #fff;
-}
-
-#timer-list {
-    width: 100%;
+    outline: none;
 }
 
 .div-main {
@@ -54,20 +49,21 @@ input {
 }
 
 .div-bottom {
+    width: 100%;
     display: flex;
     margin: auto;
-    align-items: baseline;
-    justify-content: center;
+    justify-content: space-around;
     flex-direction: row;
+    align-items: center;
 }
 
 .div-hint {
     display: flex;
-    margin: auto;
+    margin-top: 5px;
     align-items: baseline;
     justify-content: center;
     flex-direction: row;
-    font-size: xx-small;
+    font-size: 0.5em;
 }
 
 .timer {
@@ -94,15 +90,18 @@ input {
         justify-content: center;
         align-items: center;
         color: #fff;
-        width: 100%;
+        width: 50%;
     }
 }
 
 .timer h5 {
+    display: flex;
+    width: 50%;
     color: #eee;
     margin-top: 0px;
     margin-bottom: 0px;
-}
+    font-size: 0.65em;
+    justify-content: center;}
 
 .timer div h2 {
     display: flex;
@@ -115,18 +114,6 @@ input {
     background-color: transparent;
     border: none;
     cursor: pointer;
-}
-
-.edit-button {
-    color: #0073e6;
-}
-
-.delete-button {
-    color: #ff0000;
-}
-
-.refresh-button {
-    color: #00aa00;
 }
 
 /* CSS for the floating popup */
@@ -161,20 +148,22 @@ input {
 }
 
 
-.material-symbols-outlined {
-    cursor: pointer;
-    font-variation-settings:
-        'FILL' 0,
-        'wght' 400,
-        'GRAD' 0,
-        'opsz' 24
+#timer-list {
+    width: 100%;
+    margin-top: 13%;
+    margin-bottom: 10%;
 }
 
-
 .floating-button {
+    width: 100%;
+    padding: 1%;
+    background-color: #494949;
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    display: flex;
+    bottom: 0px;
+    right: 0px;
+    justify-content: space-evenly;
+
     z-index: 1000;
     /* Adjust the z-index to make sure it appears above other elements */
 }
@@ -225,6 +214,7 @@ input {
     /* You can use 'contain' or other values based on your preference */
     background-position: center center;
     /* You can adjust the positioning */
+    width: 100%;
 }
 
 .tag-container {
@@ -238,6 +228,7 @@ input {
     font-size: 0.6em;
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 .tag {
@@ -254,10 +245,15 @@ input {
 }
 
 #search-container {
-    margin: 10px;
+    width: 100%;
+    position: absolute;
+    height: 5%;
+    top: 0;
+    left: 0;
     text-align: center;
     display: flex;
     justify-content: center;
+    background-color: #494949;
 }
 
 #my-prompt,
@@ -265,15 +261,27 @@ input {
 #min-remaining,
 #max-remaining {
     width: 50%;
-    box-sizing: border-box;
-    margin-bottom: 10px;
-    background-color: #333;
     color: white;
+    font-size: x-small;
+    background-color: #494949;
+}
+
+#my-prompt {
+    background-color: #333;
+}
+
+#search-input {
+    width: 100%;
 }
 
 
+
+
 #advanced-search-container {
-    margin: 10px;
+    width: 100%;
+    top:5%;
+    left:0;
+    position:absolute;
     text-align: center;
     display: flex;
     justify-content: center;
@@ -282,9 +290,33 @@ input {
 #advanced-search-options {
     display: flex;
     justify-content: center;
-    margin-top: 5px;
+    width: 100%;
 }
 
-#advanced-search-options label {
-    margin-right: 5px;
+
+#colorPickerContainer {
+    background-color: #ccc;
+    display: flex;
+    border: 1px;
+    color: black;
+    padding: 2px;
+    border-radius: 5px;
+}
+
+#colorPicker {
+    background-color: inherit;
+    border: none;
+}
+
+#colorPickerConfirm {
+    color : #0073e6;
+}
+
+.material-symbols-outlined {
+    cursor: pointer;
+    font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24
 }
