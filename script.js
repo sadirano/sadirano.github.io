@@ -4,6 +4,18 @@ let shouldReload = false;
 let lastCountdownAdded;
 const settings = loadSettings();
 
+let lastFocusedH5Element = null;
+document.addEventListener('focus', function (event) {
+  const focusedElement = event.target;
+
+  if (focusedElement.tagName === 'H5') {
+    lastFocusedH5Element = focusedElement;
+  }
+}, true);
+function selectLastFocusedH5Element() {
+  if (lastFocusedH5Element !== undefined) lastFocusedH5Element.focus();
+}
+
 function loadSettings() {
   try {
     return JSON.parse(localStorage.getItem('settings')) || {};
@@ -15,7 +27,9 @@ function loadSettings() {
 }
 function saveSettings() {
   localStorage.setItem('settings', JSON.stringify(settings));
+  localStorage.setItem('settingsLastUpdate', Date.now());
 }
+
 
 const tagColorMap = loadColorMap()
 
@@ -29,6 +43,17 @@ function loadColorMap() {
 
 function saveColorMap() {
   localStorage.setItem('tagColorMap', JSON.stringify(tagColorMap));
+  localStorage.setItem('tagColorMapLastUpdate', Date.now());
+}
+
+const customKeywordsMap = loadCustomKeywordsMap();
+
+function loadCustomKeywordsMap() {
+  try {
+    return JSON.parse(localStorage.getItem('customKeywordsMap')) || {};
+  } catch (error) {
+    return {};
+  }
 }
 
 const dynamicParamsManager = (function () {
@@ -59,10 +84,13 @@ const dynamicParamsManager = (function () {
   };
 })();
 
+let tribute;
+
 function initializePage() {
   updateSettings(settings);
   setInterval(refreshPageIfNeeded, settings.updateInterval);
   loadTimers();
+  tribute = bindTribute();
   document.addEventListener('keydown', backupToClipboard);
   document.addEventListener('keydown', loadBackupFromClipboard);
   document.addEventListener('keydown', createNewTimerEvent);
@@ -70,6 +98,56 @@ function initializePage() {
 
 document.addEventListener('DOMContentLoaded', initializePage);
 
+function getAllTags() {
+  const allTags = new Set();
+  timers.forEach(timer => {
+    timer.tags.forEach(tag => {
+      allTags.add(tag);
+    });
+  });
+  return Array.from(allTags).map(tag => ({ key: tag.toLowerCase(), value: tag }));
+}
+
+
+function bindTribute() {
+  var tributeAttributes = {
+    trigger: "#",
+    noMatchTemplate: "",
+    values: getAllTags(),
+    selectTemplate: function (item) {
+      if (typeof item === "undefined") return null;
+      if (this.range.isContentEditable(this.current.element)) {
+        return item.original.key;
+      }
+
+      return item.original.value;
+    },
+    menuItemTemplate: function (item) {
+      return item.original.value.replace("#", "");
+    }
+  };
+
+  // Clear existing tribute collections
+  if (tribute) {
+    tribute.detach(document.getElementById("my-prompt"));
+    tribute = null;
+  }
+
+  // Create a new tribute instance
+  tribute = new Tribute(
+    Object.assign(
+      {
+        menuContainer: document.getElementById("customPrompt")
+      },
+      tributeAttributes
+    )
+  );
+
+  // Attach tribute to the input element
+  tribute.attach(document.getElementById("my-prompt"));
+
+  return tribute;
+}
 
 function updateDynamicParams({ isEditMode, shouldReload, lastUserInteraction }) {
   dynamicParamsManager.updateParams({ isEditMode, shouldReload, lastUserInteraction });
@@ -100,38 +178,81 @@ function refreshPageIfNeeded() {
   }
 }
 function backupToClipboard(event) {
-  if (event.ctrlKey && event.key === 'e') {
-    event.preventDefault();
+  if (event === undefined || (event.ctrlKey && event.key === 'e')) {
+    let backupTimers = timers.map(timer => {
+      // Include startTime in the timer backup
+      return {
+        id: timer.id,
+        name: timer.name,
+        input: timer.input,
+        note: timer.note,
+        startTime: timer.startTime,
+        // Add any other properties you want to include in the backup
+      };
+    });
+
     let backup = {
-      timers: timers,
-      tagColorMap: tagColorMap,
-      settings: settings
-    }
+      timers: backupTimers,
+      tagColorMap: {
+        data: tagColorMap,
+        lastUpdate: localStorage.getItem('tagColorMapLastUpdate'),
+      },
+      settings: {
+        data: settings,
+        lastUpdate: localStorage.getItem('settingsLastUpdate'),
+      }
+    };
+
     navigator.clipboard
       .writeText(JSON.stringify(backup));
   }
 }
-
 function loadBackupFromClipboard(event) {
-  if (event.ctrlKey && event.key === 'q') {
-    event.preventDefault();
+  if (event === undefined || (event.ctrlKey && event.key === 'q')) {
     navigator.clipboard
       .readText()
-      .then(
-        (backup_string) => {
-          let backup = JSON.parse(backup_string);
-          localStorage.setItem('timers', JSON.stringify(backup.timers));
+      .then((backup_string) => {
+        let backup = JSON.parse(backup_string);
+
+        // Check and update tagColorMap and settings based on lastUpdate
+        if (backup.tagColorMap && backup.tagColorMap.lastUpdate && backup.tagColorMap.lastUpdate > localStorage.getItem('tagColorMapLastUpdate')) {
           localStorage.setItem('tagColorMap', JSON.stringify(backup.tagColorMap));
-          localStorage.setItem('settings', JSON.stringify(backup.settings));
-          location.reload();
+          localStorage.setItem('tagColorMapLastUpdate', backup.tagColorMap.lastUpdate);
         }
-      );
+
+        if (backup.settings && backup.settings.lastUpdate && backup.settings.lastUpdate > localStorage.getItem('settingsLastUpdate')) {
+          localStorage.setItem('settings', JSON.stringify(backup.settings));
+          localStorage.setItem('settingsLastUpdate', backup.settings.lastUpdate);
+        }
+
+        // Compare and update each timer based on startTime
+        if (backup.timers && Array.isArray(backup.timers)) {
+          backup.timers.forEach((backupTimer) => {
+            const existingTimer = timers.find((timer) => timer.id === backupTimer.id);
+
+            if (existingTimer) {
+              // Compare and update based on startTime
+              if (backupTimer.startTime > existingTimer.startTime) {
+                Object.assign(existingTimer, backupTimer);
+              }
+            } else {
+              // If timer doesn't exist, add it to the timers array
+              timers.push(backupTimer);
+            }
+          });
+
+          // Update localStorage with the modified timers array
+          localStorage.setItem('timers', JSON.stringify(timers));
+        }
+
+        // Reload the page after processing the backup
+        location.reload();
+      });
   }
 }
 
-
 function createNewTimerEvent(event) {
-  if (event.ctrlKey && event.key === "Enter") {
+  if (event.ctrlKey && event.key === "n") {
     newTimer();
   }
 }
@@ -142,6 +263,7 @@ function newTimer() {
   const durationInput = 60;
   let duration = getDuration(durationInput);
   const startTime = Date.now();
+  const repeat = false;
   let timer = {
     timerId: generateRandomId(),
     name: timerName,
@@ -149,7 +271,8 @@ function newTimer() {
     startTime: startTime,
     input: durationInput,
     note: '',
-    tags: []
+    tags: [],
+    repeat: repeat
   };
 
   const timerElement = createTimerElement(timer);
@@ -219,7 +342,10 @@ function createTimerElement(timer) {
     if (timer.note !== '' && timer.note !== undefined && timer.note !== 'undefined') {
       let noteLines = timer.note.split("\n");
       for (let line of noteLines) {
-        if (!line.trim().startsWith("img=")) {
+        if (!line.trim().startsWith("img=")
+          && !line.trim().startsWith("#")
+          && !line.trim().startsWith("!")
+        ) {
           note += line.trim() + '<br>';
         }
       }
@@ -285,7 +411,7 @@ function createTimerElement(timer) {
 
     countdownDisplay.textContent = formattedTime;
 
-    let percentage = (remainingTime_ms / timer.duration * 1000) * 100;
+    let percentage = (remainingTime_ms / (timer.duration * 1000)) * 100;
 
     // Calculate the new class based on percentage
     let newClass = "-normal";
@@ -349,72 +475,100 @@ function createTimerElement(timer) {
 
   const customPrompt = document.getElementById('customPrompt');
   const prompt = document.getElementById('my-prompt');
-  const promptType = document.getElementById('promptType');
 
-  timerName.addEventListener('click', function () {
-    openPrompt(timer.name + '\n' + timer.note, "note");
-  });
+  timerElement.addEventListener('click', openPromptHandler);
 
-  timerName.addEventListener('keypress', function (event) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      openPrompt(timer.name + '\n' + timer.note, "note");
+  timerElement.addEventListener('keypress', function (event) {
+    switch (event.key) {
+      case "Delete":
+        event.preventDefault();
+        deleteTimer();
+        break;
+      case "R":
+        event.preventDefault();
+        refreshTimer();
+        break;
+      case "e":
+      case " ":
+        event.preventDefault();
+        openPromptHandler(event);
+        break;
+
+      default:
+        break;
     }
   });
-  countdownDisplay.addEventListener('click', function () {
-    openPrompt(timer.input, "duration");
-  });
 
-  function getAllTags() {
-    const allTags = new Set();
+  // Delete button functionality
+  deleteButton.addEventListener('click', deleteTimer);
+  // Refresh button functionality
+  refreshButton.addEventListener('click', refreshTimer);
 
-    timers.forEach(timer => {
-      timer.tags.forEach(tag => {
-        allTags.add(tag);
-      });
-    });
+  function refreshTimer() {
+    clearInterval(timerInterval);
 
-    return Array.from(allTags);
+    let newDuration = getDuration(timer.input);
+    durationDisplay.textContent = `${newDuration}`;
+    timer.startTime = Date.now();
+    timer.duration = newDuration;
+    notified = false;
+
+    startTimer();
+    saveTimers();
   }
 
+  function deleteTimer() {
+    document.getElementById('timer-list').removeChild(timerElement);
+    clearInterval(timerInterval);
+    let timerIndex = timers.findIndex(t => t.timerId === timer.timerId);
+    if (timerIndex - 1) {
+      timers.splice(timerIndex, 1);
+      saveTimers();
+    }
+  }
+
+
+  function openPromptHandler(event) {
+    if (isEditMode) return;
+    isEditMode = true;
+    // Elements to be excluded
+    const excludeElements = [tagContainer, deleteButton, refreshButton];
+
+    bindTribute();
+
+    let isExcluded = false;
+    try {
+      // Get the clicked element
+      const clickedElement = event.target;
+      // Check if the clicked element is inside any of the excludeElements
+      isExcluded = excludeElements.some(element => element.contains(clickedElement));
+
+    } catch (error) {
+      // Handle the error if needed
+    }
+
+    // If not, open the prompt
+    if (!isExcluded) {
+      let note = '';
+      if (timer.note !== undefined && timer.note !== "undefined") {
+        note = timer.note;
+      }
+      openPrompt(timer.input + '\n' + timer.name + '\n' + note);
+    }
+  }
+
+
+
+
   // Updated openPrompt function to handle multiline notes input
-  function openPrompt(initialValue, elementToUpdate) {
+  function openPrompt(initialValue) {
     isEditMode = true;
     customPrompt.style.display = 'flex';
-    promptType.value = elementToUpdate;
 
     //    prompt.textContent = initialValue;
     prompt.value = initialValue;
 
-    // Create a textarea for notes input
-    if (elementToUpdate === "note") {
-      prompt.rows = 5; // Set the number of rows as needed
-      // Initialize autocomplete for tags
-      const tags = getAllTags();
-      const tagInput = new Bloodhound({
-        datumTokenizer: Bloodhound.tokenizers.whitespace,
-        queryTokenizer: Bloodhound.tokenizers.whitespace,
-        local: tags,
-      });
-
-      tagInput.initialize();
-
-      $('#prompt').typeahead(
-        {
-          hint: true,
-          highlight: true,
-          minLength: 1,
-        },
-        {
-          name: 'tags',
-          source: tagInput.ttAdapter(),
-        }
-      );
-
-    } else {
-      prompt.rows = 1;
-    }
-
+    prompt.rows = 10; // Set the number of rows as needed
     prompt.addEventListener('keydown', handlePromptKeydown);
     // Add new event listeners
     prompt.addEventListener("blur", cancelPrompt);
@@ -422,77 +576,80 @@ function createTimerElement(timer) {
 
     customPrompt.appendChild(prompt);
     prompt.focus();
-    prompt.select();
   }
 
   function handlePromptKeydown(event) {
-    if ((event.key === 'Enter' && !event.shiftKey) || event.key === 'Tab') {
+    if (event.ctrlKey && event.key === 'Enter') {
+      submitPrompt();
+    }
+    if (event.key === 'Tab') {
+      event.preventDefault();
       submitPrompt();
     }
   }
+
+
 
   function cancelPrompt(event) {
     if (event.key === "Escape" || event.type === "blur") {
       isEditMode = false;
       customPrompt.style.display = 'none';
       clearListeners();
+      selectLastFocusedH5Element();
     }
   }
 
+
+
   // Updated submitPrompt function to handle notes changes
   function submitPrompt() {
-    switch (promptType.value) {
-      case "duration":
-        const durationInput = prompt.value;
+    const inputValue = prompt.value;
 
-        let newDuration = getDuration(durationInput);
+    // Split the input into lines
+    const lines = inputValue.split('\n');
 
-        if (!isNaN(newDuration) && newDuration > 0) {
-          clearInterval(timerInterval);
-          durationDisplay.textContent = `${newDuration}`;
-          timer.startTime = Date.now();
-          timer.duration = newDuration;
-          timer.input = durationInput;
+    // Extract the first line as the timer duration input
+    const durationInput = lines[0].trim();
+    let newDuration = getDuration(durationInput);
 
-          updateCountdown();
-          saveTimers();
-          startTimer();
-        }
-        break;
-      case "note":
-        const inputValue = prompt.value;
+    if (!isNaN(newDuration) && newDuration > 0 && newDuration != timer.duration) {
+      clearInterval(timerInterval);
+      durationDisplay.textContent = `${newDuration}`;
+      timer.startTime = Date.now();
+      timer.duration = newDuration;
+      timer.input = durationInput;
+      timer.repeat = false;
 
-        // Split the input into lines
-        const lines = inputValue.split('\n');
-
-        // Extract the first line as the timer name
-        const newTimerName = lines[0].trim();
-        if (newTimerName !== null && newTimerName !== '') {
-          timerName.textContent = newTimerName;
-          timer.name = newTimerName;
-        }
-
-        // Extract the rest of the lines as notes
-        const newNote = lines.slice(1).join('\n').trim();
-
-        // Extract tags from the note and update the timer tags
-        const newTags = extractTags(newNote);
-        timer.tags = newTags;
-        timer.note = newNote;
-        updateNote();
-        updateTags(timer, tagsDisplay, tagContainer); // Update the tags display
-        updateBackgroundImage();
-        saveTimers();
-        break;
-
-      default:
+      updateCountdown();
+      saveTimers();
+      startTimer();
     }
+
+    // Extract the second line as the timer name
+    const newTimerName = lines[1].trim();
+    if (newTimerName !== null && newTimerName !== '') {
+      timerName.textContent = newTimerName;
+      timer.name = newTimerName;
+    }
+
+    // Extract the rest of the lines as notes
+    const newNote = lines.slice(2).join('\n').trim();
+
+    // Extract tags from the note and update the timer tags
+    const newTags = extractTags(newNote);
+    timer.tags = newTags;
+    timer.note = newNote;
+    updateNote();
+    updateTags(timer, tagsDisplay, tagContainer); // Update the tags display
+
+    updateBackgroundImage();
+    saveTimers();
 
     customPrompt.style.display = 'none';
     isEditMode = false;
 
-    clearListeners()
-
+    clearListeners();
+    selectLastFocusedH5Element();
   }
 
   function clearListeners() {
@@ -516,16 +673,6 @@ function createTimerElement(timer) {
   prompt.removeEventListener('keydown', handlePromptKeydown);
   isEditMode = false;
 
-  // Delete button functionality
-  deleteButton.addEventListener('click', function () {
-    document.getElementById('timer-list').removeChild(timerElement);
-    clearInterval(timerInterval);
-    let timerIndex = timers.findIndex(t => t.timerId === timer.timerId);
-    if (timerIndex - 1) {
-      timers.splice(timerIndex, 1);
-      saveTimers();
-    }
-  });
 
   updateNote();
 
@@ -543,19 +690,6 @@ function createTimerElement(timer) {
   }
 
 
-  // Refresh button functionality
-  refreshButton.addEventListener('click', function () {
-    clearInterval(timerInterval);
-
-    let newDuration = getDuration(timer.input);
-    durationDisplay.textContent = `${newDuration}`;
-    timer.startTime = Date.now();
-    timer.duration = newDuration;
-    notified = false;
-
-    startTimer();
-    saveTimers();
-  });
 
   startTimer();
   return timerElement;
@@ -614,8 +748,8 @@ function applySearch() {
 
     // Check if the timer's text contains the search input and is within the remaining time range
     const meetsSearchCriteria = timerText.includes(searchInput);
-    const meetsMinTimeCriteria = isNaN(minRemaining) || minRemaining <= remainingSeconds;
-    const meetsMaxTimeCriteria = isNaN(maxRemaining) || remainingSeconds <= maxRemaining;
+    const meetsMinTimeCriteria = minRemaining === "" || minRemaining <= remainingSeconds;
+    const meetsMaxTimeCriteria = maxRemaining === "" || remainingSeconds <= maxRemaining;
 
     timerElement.style.display = meetsSearchCriteria && meetsMinTimeCriteria && meetsMaxTimeCriteria ? 'flex' : 'none';
   });
@@ -636,7 +770,7 @@ function updateTags(timer, tagsDisplay, tagContainer) {
   timer.tags.forEach(tag => {
     const tagElement = document.createElement('span');
     tagElement.className = 'tag';
-    tagElement.textContent = tag;
+    tagElement.textContent = tag.substring(1);
     if (tagColorMap[tag] === undefined) getRandomColor(tag);
     tagElement.style.backgroundColor = tagColorMap[tag].backgroundColor;
     tagElement.style.color = tagColorMap[tag].fontColor;
@@ -744,7 +878,7 @@ function showColorPicker(event, tag) {
 
   // Create a container div for the color picker and confirm button
   const colorPickerContainer = document.createElement('div');
-  
+
   colorPickerContainer.id = 'colorPickerContainer';
   colorPickerContainer.style.position = 'absolute';
   colorPickerContainer.style.left = `${event.pageX}px`;
@@ -835,3 +969,5 @@ document.addEventListener('click', function (event) {
     colorPickerContainer.remove();
   }
 });
+
+

@@ -118,30 +118,56 @@ function textSecondsRemaining(condition) {
 
 function getDuration(timerDurationInput) {
   try {
-    return Math.max(0, eval(timerDurationInput));
-  } catch (error) {
-    // console.log(timerDurationInput + " is not a valid Math expression");
+    // Try to evaluate the expression directly using eval
+    const evaluatedValue = eval(getDurationInternal(timerDurationInput));
+    if (!isNaN(evaluatedValue)) {
+      return evaluatedValue;
+    }
+  } catch (error) { }
+  return timerDurationInput;
+}
+
+function getDurationInternal(timerDurationInput) {
+  if (timerDurationInput in customKeywordsMap) {
+    // If the input is a custom keyword, recursively process its components
+    const components = customKeywordsMap[timerDurationInput].split(/\s*\*\s*/);
+    let result = 1; // Initialize result to 1 for multiplication
+    components.forEach(element => {
+      result *= getDurationInternal(element);
+    });
+    return result;
   }
 
   try {
+    // Try to evaluate the expression directly using eval
+    const evaluatedValue = eval(timerDurationInput);
+    if (!isNaN(evaluatedValue)) {
+      return evaluatedValue;
+    }
+  } catch (error) { }
+
+  try {
+    // Try to convert time string to seconds
     return timeStringToSeconds(timerDurationInput);
-  } catch (error) {
-    // console.log(timerDurationInput + " is not a valid Time expression");
-  }
+  } catch (error) { }
 
   try {
+    // Try to convert hour string to seconds
     return hourStringToSeconds(timerDurationInput);
-  } catch (error) {
-    // console.log(timerDurationInput + " is not a valid Hour expression");
-  }
-
-  if (timerDurationInput === "day")
-    return 3600 * 24
+  } catch (error) { }
 
   try {
+    // Try to parse text seconds remaining
     return textSecondsRemaining(timerDurationInput);
-  } catch (error) {
-    // console.log(timerDurationInput + " is not a valid Hour expression");
-  }
+  } catch (error) { }
 
+  if (!/\s/.test(timerDurationInput)) return timerDurationInput;
+
+  // If the input contains multiple elements, split and sum their durations
+  let result = 0;
+  timerDurationInput.split(/\s+/).forEach(element => {
+    result += getDurationInternal(element);
+  });
+
+  return result;
 }
