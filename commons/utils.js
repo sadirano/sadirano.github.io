@@ -2,14 +2,24 @@ function generateRandomId() {
     return Math.random().toString(36).substring(2, 11);
 }
 
+async function checkNotificationPermission() {
+    if ('Notification' in window) {
+        const permission = await Notification.requestPermission();
+        return permission === 'granted';
+    } else {
+        console.warn('Notifications not supported in this browser.');
+        return false;
+    }
+}
+
 function showNotification(msg) {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
         // Register a service worker
         navigator.serviceWorker.register('./commons/service-worker.js')
             .then(async function (registration) {
                 // Check if permission to show notifications is granted
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
+                const permissionGranted = await checkNotificationPermission();
+                if (permissionGranted) {
                     // Create a push notification
                     return registration.showNotification(msg);
                 }
@@ -21,7 +31,6 @@ function showNotification(msg) {
         console.warn('Service workers or PushManager not supported in this browser.');
     }
 }
-
 
 function requestClipboardPermission() {
     navigator.permissions.query({ name: 'clipboard-write' })

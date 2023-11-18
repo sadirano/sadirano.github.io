@@ -4,14 +4,19 @@ const timers = [];
 const defaultSettings = {
   updateInterval: 60000,
   displayTimeFormat: 'hh:mm:ss',
-  // Add other properties with default values as needed
+  showNotificationCommand: false,
+  resultToSearchInput: true,
+  clearSearchInput: false,
 };
+
 const settings = loadSettings()
 
 function initializePage() {
   setInterval(refreshPageIfNeeded, settings.updateInterval);
+  checkNotificationPermission();
   loadTimers();
   tribute = bindTribute();
+  bindAutoCompleteCommands();
   document.addEventListener('keydown', backupToClipboard);
   document.addEventListener('keydown', loadBackupFromClipboard);
   document.addEventListener('keydown', createNewTimerEvent);
@@ -22,26 +27,6 @@ function initializePage() {
   });
 
 }
-
-// Add an event listener to the document for the 'keydown' event
-document.addEventListener('keydown', function (event) {
-  // Check if the pressed key is the 'Tab' key (key code 9)
-  if (event.key === 'Tab') {
-
-    // Get the currently focused element
-    const focusedElement = document.activeElement;
-
-    // Check if the focused element exists
-    if (focusedElement) {
-      // Scroll the focused element into view, centering it in the viewport
-      focusedElement.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-        inline: 'center',
-      });
-    }
-  }
-});
 
 function calculateNumberOfElementsInLine(container) {
   // Get the width of the container
@@ -56,20 +41,30 @@ function calculateNumberOfElementsInLine(container) {
   return numberOfElementsInLine;
 }
 
+let previousColumn = -1;
+
 document.addEventListener('keydown', function (event) {
   if (dynamicParamsManager.getParams().isEditMode) return;
-  const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+  const movementKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'];
 
   // Check if the pressed key is an arrow key
-  if (arrowKeys.includes(event.key)) {
-    // Prevent the default arrow key behavior to handle it manually
-    event.preventDefault();
-
+  if (movementKeys.includes(event.key)) {
     // Get the currently focused element
     const focusedElement = document.activeElement;
 
+    if (focusedElement.tagName === 'INPUT') return;
+
+    // Prevent the default arrow key behavior to handle it manually
+    event.preventDefault();
+
+    let key = event.key;
+
+    if (key === 'Tab') {
+      key = event.shiftKey ? 'STab' : 'Tab'
+    }
+
     // Find all focusable elements on the page
-    const focusableElements = Array.from(document.querySelectorAll('a, button, input, select, textarea, [tabindex]'))
+    const focusableElements = Array.from(document.querySelectorAll('[tabindex]'))
       .filter(element => !element.hasAttribute('disabled'));
 
     // Find the index of the currently focused element in the array
@@ -81,28 +76,58 @@ document.addEventListener('keydown', function (event) {
     // Calculate the number of elements in a line dynamically
     const numberOfElementsInLine = calculateNumberOfElementsInLine(container);
 
-
+    if (previousColumn === -1) {
+      previousColumn = currentIndex % numberOfElementsInLine;
+    }
     // Calculate the index of the next or previous focusable element
     let nextIndex;
-    switch (event.key) {
+    switch (key) {
       case 'ArrowDown':
-        nextIndex = (currentIndex + numberOfElementsInLine) % focusableElements.length;
+        //Last row
+        if (currentIndex >= focusableElements.length - numberOfElementsInLine) {
+          nextIndex = previousColumn;
+        } else {
+          nextIndex = (currentIndex + numberOfElementsInLine);
+          //Selecting the last row item
+          if (nextIndex > focusableElements.length) {
+            nextIndex = focusableElements.length - 1;
+          }
+        }
         break;
       case 'ArrowRight':
+      case 'Tab':
         nextIndex = (currentIndex + 1) % focusableElements.length;
+        previousColumn = nextIndex % numberOfElementsInLine;
         break;
       case 'ArrowUp':
-        nextIndex = (currentIndex - numberOfElementsInLine + focusableElements.length) % focusableElements.length;
+        let elementsLastLine = focusableElements.length % numberOfElementsInLine;
+        //Last row
+        if (currentIndex > focusableElements.length - numberOfElementsInLine) {
+          nextIndex = focusableElements.length - elementsLastLine - numberOfElementsInLine + previousColumn;
+        } else {
+          if (currentIndex < numberOfElementsInLine) { //First row
+            nextIndex = focusableElements.length - elementsLastLine + previousColumn;
+            if (nextIndex >= focusableElements.length) nextIndex = focusableElements.length - 1;
+          } else {
+            nextIndex = (currentIndex - numberOfElementsInLine);
+          }
+        }
         break;
       case 'ArrowLeft':
+      case 'STab':
         nextIndex = (currentIndex - 1 + focusableElements.length) % focusableElements.length;
+        previousColumn = nextIndex % numberOfElementsInLine;
         break;
       default:
         break;
     }
 
-    // Focus on the next or previous focusable element
-    focusableElements[nextIndex].focus();
+    if (focusableElements[nextIndex] !== undefined) {
+      // Focus on the next or previous focusable element
+      focusableElements[nextIndex].focus();
+    } else {
+      focusableElements[0].focus();
+    }
 
     // Check if the focused element exists
     if (focusedElement) {
@@ -115,8 +140,6 @@ document.addEventListener('keydown', function (event) {
     }
   }
 });
-
-
 
 
 let lastFocusedTimerElement = null;
@@ -235,8 +258,6 @@ const dynamicParamsManager = (function () {
 
 let tribute;
 
-
-
 document.addEventListener('DOMContentLoaded', initializePage);
 
 function getAllTags() {
@@ -248,7 +269,6 @@ function getAllTags() {
   });
   return Array.from(allTags).map(tag => ({ key: tag.toLowerCase(), value: tag }));
 }
-
 
 function bindTribute() {
   var tributeAttributes = {
@@ -271,6 +291,7 @@ function bindTribute() {
   // Clear existing tribute collections
   if (tribute) {
     tribute.detach(document.getElementById("my-prompt"));
+    document.getElementById("my-prompt").removeAttribute("data-tribute")
     tribute = null;
   }
 
@@ -315,82 +336,121 @@ function refreshPageIfNeeded() {
     location.reload();
   }
 }
-function backupToClipboard(event) {
+
+
+// Function to backup timers to clipboard
+async function backupToClipboard(event) {
   if (event === undefined || (event.ctrlKey && event.key === 'e')) {
-    let backupTimers = timers.map(timer => {
-      // Include startTime in the timer backup
-      return {
-        id: timer.id,
-        name: timer.name,
-        input: timer.input,
-        note: timer.note,
-        startTime: timer.startTime,
-        // Add any other properties you want to include in the backup
+    try {
+
+      let backup = {
+        timers: timers,
+        tagColorMap: {
+          data: tagColorMap,
+          lastUpdate: localStorage.getItem('tagColorMapLastUpdate'),
+        },
+        settings: {
+          data: settings,
+          lastUpdate: localStorage.getItem('settingsLastUpdate'),
+        }
       };
-    });
 
-    let backup = {
-      timers: backupTimers,
-      tagColorMap: {
-        data: tagColorMap,
-        lastUpdate: localStorage.getItem('tagColorMapLastUpdate'),
-      },
-      settings: {
-        data: settings,
-        lastUpdate: localStorage.getItem('settingsLastUpdate'),
+      const api = localStorage.getItem('api');
+      if (api) {
+        // Make API call to save remote data
+        const saveApiResponse = await fetch(api + '/timers', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(backup),
+        });
+
+        if (saveApiResponse.ok) {
+          console.log('Remote data saved successfully.');
+        } else {
+          console.error('Error saving remote data:', saveApiResponse.statusText);
+        }
+      } else {
+        // Copy the combined backup to clipboard
+        navigator.clipboard.writeText(JSON.stringify(backup));
       }
-    };
-
-    navigator.clipboard
-      .writeText(JSON.stringify(backup));
+    } catch (error) {
+      console.error('Error during backup:', error);
+    }
   }
 }
-function loadBackupFromClipboard(event) {
+
+
+// Function to load backup from clipboard
+async function loadBackupFromClipboard(event) {
   if (event === undefined || (event.ctrlKey && event.key === 'q')) {
-    navigator.clipboard
-      .readText()
-      .then((backup_string) => {
-        let backup = JSON.parse(backup_string);
+    try {
+      let backup;
+      const api = localStorage.getItem('api');
+      if (api) {
+        // Make API call to retrieve remote data
+        const apiResponse = await fetch(api + '/timers');
+        backup = await apiResponse.json();
+      } else {
+        // Read the backup from clipboard
+        const backup_string = await navigator.clipboard.readText();
+        backup = JSON.parse(backup_string);
+      }
 
-        // Check and update tagColorMap and settings based on lastUpdate
-        if (backup.tagColorMap && backup.tagColorMap.lastUpdate && backup.tagColorMap.lastUpdate > localStorage.getItem('tagColorMapLastUpdate')) {
-          localStorage.setItem('tagColorMap', JSON.stringify(backup.tagColorMap));
-          localStorage.setItem('tagColorMapLastUpdate', backup.tagColorMap.lastUpdate);
+      processBackup(backup);
+      processTimers(backup);
+
+      // Reload the page after processing the backup
+      location.reload();
+    } catch (error) {
+      console.error('Error during backup loading:', error);
+    }
+  }
+}
+
+
+function processTimers(backup) {
+  // Compare and update each timer based on startTime
+  if (backup.timers && Array.isArray(backup.timers)) {
+    backup.timers.forEach((backupTimer) => {
+      const existingTimer = timers.find((timer) => timer.timerId === backupTimer.timerId);
+
+      if (existingTimer) {
+        // Compare and update based on startTime
+        if (backupTimer.startTime > existingTimer.startTime) {
+          Object.assign(existingTimer, backupTimer);
         }
+      } else {
+        // If timer doesn't exist, add it to the timers array
+        timers.push(backupTimer);
+      }
+    });
 
-        if (backup.settings && backup.settings.lastUpdate && backup.settings.lastUpdate > localStorage.getItem('settingsLastUpdate')) {
-          localStorage.setItem('settings', JSON.stringify(backup.settings));
-          localStorage.setItem('settingsLastUpdate', backup.settings.lastUpdate);
-        }
+    // Update localStorage with the modified timers array
+    localStorage.setItem('timers', JSON.stringify(timers));
+  }
+}
 
-        // Compare and update each timer based on startTime
-        if (backup.timers && Array.isArray(backup.timers)) {
-          backup.timers.forEach((backupTimer) => {
-            const existingTimer = timers.find((timer) => timer.id === backupTimer.id);
+function processBackup(backup) {
+  // Check and update tagColorMap and settings based on lastUpdate
+  if (backup.tagColorMap && backup.tagColorMap.lastUpdate && backup.tagColorMap.lastUpdate > localStorage.getItem('tagColorMapLastUpdate')) {
+    localStorage.setItem('tagColorMap', JSON.stringify(backup.tagColorMap));
+    localStorage.setItem('tagColorMapLastUpdate', backup.tagColorMap.lastUpdate);
+  }
 
-            if (existingTimer) {
-              // Compare and update based on startTime
-              if (backupTimer.startTime > existingTimer.startTime) {
-                Object.assign(existingTimer, backupTimer);
-              }
-            } else {
-              // If timer doesn't exist, add it to the timers array
-              timers.push(backupTimer);
-            }
-          });
-
-          // Update localStorage with the modified timers array
-          localStorage.setItem('timers', JSON.stringify(timers));
-        }
-
-        // Reload the page after processing the backup
-        location.reload();
-      });
+  if (backup.settings && backup.settings.lastUpdate && backup.settings.lastUpdate > localStorage.getItem('settingsLastUpdate')) {
+    localStorage.setItem('settings', JSON.stringify(backup.settings));
+    localStorage.setItem('settingsLastUpdate', backup.settings.lastUpdate);
   }
 }
 
 function createNewTimerEvent(event) {
-  if (event.ctrlKey && event.key === "+") {
+  // Get the currently focused element
+  const focusedElement = document.activeElement;
+  if (focusedElement.tagName === 'INPUT') return;
+  if (dynamicParamsManager.getParams().isEditMode) return;
+  if (event.key === "+") {
     event.preventDefault();
     newTimer();
   }
@@ -561,7 +621,7 @@ function createTimerElement(timer) {
     function applyStyles(percentage, rules) {
       // Find the rule that matches the percentage
       const matchingRule = rules.find(rule => percentage < rule.limit);
-    
+
       // Apply styles based on the matching rule
       if (matchingRule) {
         countdownDisplay.style.color = matchingRule.color;
@@ -738,7 +798,7 @@ function createTimerElement(timer) {
 
   function cancelPrompt(event) {
     if (event.key === "Escape" || event.type === "blur") {
-      isEditMode = false;
+      dynamicParamsManager.updateParams({ isEditMode: false });
       customPrompt.style.display = 'none';
       clearListeners();
       selectLastFocusedTimerElement();
@@ -794,7 +854,7 @@ function createTimerElement(timer) {
     saveTimers();
 
     customPrompt.style.display = 'none';
-    isEditMode = false;
+    dynamicParamsManager.updateParams({ isEditMode: false })
 
     clearListeners();
     selectLastFocusedTimerElement();
@@ -822,7 +882,7 @@ function createTimerElement(timer) {
   customPrompt.style.display = 'none';
   // Clear event listener after submitting
   prompt.removeEventListener('keydown', handlePromptKeydown);
-  isEditMode = false;
+  dynamicParamsManager.updateParams({ isEditMode: false })
 
 
   updateNote();
@@ -898,6 +958,13 @@ function applySearchWithDelay() {
 
 function applySearch() {
   const searchInput = document.getElementById('search-input').value.toLowerCase();
+
+  if (searchInput.startsWith('/')) {
+    executeCommand(searchInput);
+    return
+  }
+
+
   const timerElements = document.getElementsByClassName('timer');
   const minRemaining = getDuration(document.getElementById('min-remaining').value);
   const maxRemaining = getDuration(document.getElementById('max-remaining').value);
@@ -1134,5 +1201,103 @@ document.addEventListener('click', function (event) {
     colorPickerContainer.remove();
   }
 });
+
+function clearSearchInput(force) {
+  if (force || settings.clearSearchInput) {
+    document.getElementById('search-input').value = '';
+  }
+}
+
+function showResult(result) {
+  if (settings.resultToSearchInput) {
+    document.getElementById('search-input').value = result;
+  }
+}
+
+function showNotificationCommand(msg) {
+  if (settings.showNotificationCommand) {
+    showNotification(msg)
+  }
+}
+
+
+
+function executeCommand(command) {
+
+  if (command.includes('/api=')) {
+    let api = searchInput.substring(4);
+    if (!api) return;
+
+    clearSearchInput();
+
+    localStorage.setItem('api', searchInput.substring(4).trim());
+
+    showNotificationCommand("Api Configured with " + api);
+    return;
+  }
+
+  if (command.includes('/toggleTimerButtons')) {
+    settings.toggleTimerButtons = !settings.toggleTimerButtons
+  }
+  if (command.includes('/toggleShowNotificationCommand')) {
+    settings.showNotificationCommand = !settings.showNotificationCommand
+  }
+  if (command.includes('/toggleResultToSearchInput')) {
+    settings.resultToSearchInput = !settings.resultToSearchInput
+  }
+  if (command.includes('/toggleClearSearchInput')) {
+    settings.clearSearchInput = !settings.clearSearchInput
+  }
+
+
+
+  if (command.includes('/api?')) {
+    clearSearchInput();
+
+    showResult(localStorage.getItem('api'));
+    return;
+  }
+
+  if (command.includes('/sadirano-configs')) {
+    settings.showNotificationCommand = true;
+    settings.resultToSearchInput = true;
+    settings.clearSearchInput = true;
+    clearSearchInput();
+    showNotificationCommand("Sadirano's Profile Loaded!");
+  }
+
+}
+
+
+function bindAutoCompleteCommands() {
+  var tribute = new Tribute({
+    trigger: "/",
+    values: [
+      { key: '/api?', value: 'Retrieve API', },
+      { key: '/api=', value: 'Setup API', },
+      { key: '/toggleTimerButtons', value: 'Toggle Timer Buttons', },
+      { key: '/sadirano-configs', value: 'Sadirano\'s Profile Config ', },
+      { key: '/toggleShowNotificationCommand', value: 'Toggle Command Notification', },
+      { key: '/toggleResultToSearchInput', value: 'Toggle option to output the result to the Search Bar', },
+      { key: '/toggleClearSearchInput', value: 'Toggle option to Clear the Search Bar after Executing the Command', },
+    ],
+
+    replaceTextSuffix: '\n',
+    selectTemplate: function (item) {
+      return item.original.key;
+    },
+    menuItemTemplate: function (item) {
+      return item.original.value;
+    },
+    lookup: function (item) {
+      return item.key + item.value
+    }
+  });
+
+  // Attach tribute to the input element
+  tribute.attach(document.getElementById("search-input"));
+
+  return tribute;
+}
 
 
