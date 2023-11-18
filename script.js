@@ -2,18 +2,131 @@ const timers = [];
 let isEditMode = false;
 let shouldReload = false;
 let lastCountdownAdded;
+
+
+function initializePage() {
+  updateSettings(settings);
+  setInterval(refreshPageIfNeeded, settings.updateInterval);
+  loadTimers();
+  tribute = bindTribute();
+  document.addEventListener('keydown', backupToClipboard);
+  document.addEventListener('keydown', loadBackupFromClipboard);
+  document.addEventListener('keydown', createNewTimerEvent);
+  document.addEventListener('keydown', function (event) {
+    if (event.ctrlKey && event.key === " ") {
+      event.preventDefault();
+    }
+  });
+
+}
+
+// Add an event listener to the document for the 'keydown' event
+document.addEventListener('keydown', function (event) {
+  // Check if the pressed key is the 'Tab' key (key code 9)
+  if (event.key === 'Tab') {
+
+    // Get the currently focused element
+    const focusedElement = document.activeElement;
+
+    // Check if the focused element exists
+    if (focusedElement) {
+      // Scroll the focused element into view, centering it in the viewport
+      focusedElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'center',
+      });
+    }
+  }
+});
+
+function calculateNumberOfElementsInLine(container) {
+  // Get the width of the container
+  const containerWidth = container.clientWidth;
+
+  // Get the width of the first focusable element (assuming all elements have the same width)
+  const elementWidth = document.querySelector('[tabindex]').clientWidth;
+
+  // Calculate the number of elements that can fit in a line
+  const numberOfElementsInLine = Math.floor(containerWidth / elementWidth);
+
+  return numberOfElementsInLine;
+}
+
+document.addEventListener('keydown', function (event) {
+  if(isEditMode) return;
+  const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+
+  // Check if the pressed key is an arrow key
+  if (arrowKeys.includes(event.key)) {
+    // Prevent the default arrow key behavior to handle it manually
+    event.preventDefault();
+
+    // Get the currently focused element
+    const focusedElement = document.activeElement;
+
+    // Find all focusable elements on the page
+    const focusableElements = Array.from(document.querySelectorAll('a, button, input, select, textarea, [tabindex]'))
+      .filter(element => !element.hasAttribute('disabled'));
+
+    // Find the index of the currently focused element in the array
+    const currentIndex = focusableElements.indexOf(focusedElement);
+
+    // Get the container element for layout calculations
+    const container = document.querySelector('.timer-container');
+
+    // Calculate the number of elements in a line dynamically
+    const numberOfElementsInLine = calculateNumberOfElementsInLine(container);
+
+
+    // Calculate the index of the next or previous focusable element
+    let nextIndex;
+    switch (event.key) {
+      case 'ArrowDown':
+        nextIndex = (currentIndex + numberOfElementsInLine) % focusableElements.length;
+        break;
+      case 'ArrowRight':
+        nextIndex = (currentIndex + 1) % focusableElements.length;
+        break;
+      case 'ArrowUp':
+        nextIndex = (currentIndex - numberOfElementsInLine + focusableElements.length) % focusableElements.length;
+        break;
+      case 'ArrowLeft':
+        nextIndex = (currentIndex - 1 + focusableElements.length) % focusableElements.length;
+        break;
+      default:
+        break;
+    }
+
+    // Focus on the next or previous focusable element
+    focusableElements[nextIndex].focus();
+
+    // Check if the focused element exists
+    if (focusedElement) {
+      // Scroll the focused element into view, centering it in the viewport
+      focusedElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'center',
+      });
+    }
+  }
+});
+
+
+
 const settings = loadSettings();
 
-let lastFocusedH5Element = null;
+let lastFocusedTimerElement = null;
 document.addEventListener('focus', function (event) {
   const focusedElement = event.target;
 
-  if (focusedElement.tagName === 'H5') {
-    lastFocusedH5Element = focusedElement;
+  if (focusedElement.className === 'timer') {
+    lastFocusedTimerElement = focusedElement;
   }
 }, true);
-function selectLastFocusedH5Element() {
-  if (lastFocusedH5Element !== undefined) lastFocusedH5Element.focus();
+function selectLastFocusedTimerElement() {
+  if (lastFocusedTimerElement !== undefined) lastFocusedTimerElement.focus();
 }
 
 function loadSettings() {
@@ -86,15 +199,7 @@ const dynamicParamsManager = (function () {
 
 let tribute;
 
-function initializePage() {
-  updateSettings(settings);
-  setInterval(refreshPageIfNeeded, settings.updateInterval);
-  loadTimers();
-  tribute = bindTribute();
-  document.addEventListener('keydown', backupToClipboard);
-  document.addEventListener('keydown', loadBackupFromClipboard);
-  document.addEventListener('keydown', createNewTimerEvent);
-}
+
 
 document.addEventListener('DOMContentLoaded', initializePage);
 
@@ -252,7 +357,8 @@ function loadBackupFromClipboard(event) {
 }
 
 function createNewTimerEvent(event) {
-  if (event.ctrlKey && event.key === "n") {
+  if (event.ctrlKey && event.key === "+") {
+    event.preventDefault();
     newTimer();
   }
 }
@@ -285,6 +391,7 @@ function createTimerElement(timer) {
   const timerElement = document.createElement('div');
   timerElement.className = 'timer';
   timerElement.dataset.timerId = timer.timerId;
+  timerElement.tabIndex = 0;
 
   const durationDisplay = document.createElement('h5');
   durationDisplay.textContent = `${timer.duration}`;
@@ -295,11 +402,14 @@ function createTimerElement(timer) {
   divBottom.className = 'div-bottom';
   const timerName = document.createElement('h5');
   timerName.textContent = timer.name;
-  timerName.tabIndex = 0;
 
   const refreshButton = document.createElement('span');
   refreshButton.className = 'material-symbols-outlined refresh-button';
   refreshButton.innerHTML = 'replay';
+
+  if (timer.fixed) {
+    refreshButton.style.visibility = 'hidden';
+  }
 
   const deleteButton = document.createElement('span');
   deleteButton.className = 'material-symbols-outlined delete-button';
@@ -405,6 +515,7 @@ function createTimerElement(timer) {
       let hora = new Date().toLocaleString("en-us", options);
       showNotification(timerName.textContent + " Done at " + hora);
       notified = true;
+      if (timer.fixed) refreshTimer();
     }
 
     let formattedTime = millisecondsToTime(remainingTime_ms, displayTimeFormat);
@@ -431,11 +542,14 @@ function createTimerElement(timer) {
   }
 
   function millisecondsToTime(milliseconds, format = "hhmmss") {
-    let totalSeconds = Math.floor(milliseconds / 1000);
+    let negative = milliseconds < 0
+
+    let absMilliseconds = Math.abs(milliseconds);
+    let totalSeconds = Math.floor(absMilliseconds / 1000);
     let hours = Math.floor(totalSeconds / 3600);
     let minutes = Math.floor((totalSeconds % 3600) / 60);
     let seconds = totalSeconds % 60;
-    let millisecondsRemainder = milliseconds % 1000;
+    let millisecondsRemainder = absMilliseconds % 1000;
 
     let formattedTime = "";
 
@@ -456,7 +570,7 @@ function createTimerElement(timer) {
       }
       formattedTime += `${padNumber(seconds)}.${padNumber(millisecondsRemainder, 3)}`;
     }
-    if (milliseconds < 0) formattedTime = '-' + formattedTime;
+    if (negative) formattedTime = '-' + formattedTime;
 
     return formattedTime;
   }
@@ -480,7 +594,7 @@ function createTimerElement(timer) {
 
   timerElement.addEventListener('keypress', function (event) {
     switch (event.key) {
-      case "Delete":
+      case "D":
         event.preventDefault();
         deleteTimer();
         break;
@@ -511,6 +625,7 @@ function createTimerElement(timer) {
     durationDisplay.textContent = `${newDuration}`;
     timer.startTime = Date.now();
     timer.duration = newDuration;
+    timer.fixed = timer.input.includes(':');
     notified = false;
 
     startTimer();
@@ -571,7 +686,7 @@ function createTimerElement(timer) {
     prompt.rows = 10; // Set the number of rows as needed
     prompt.addEventListener('keydown', handlePromptKeydown);
     // Add new event listeners
-    prompt.addEventListener("blur", cancelPrompt);
+    // prompt.addEventListener("blur", cancelPrompt);
     document.addEventListener('keydown', cancelPrompt);
 
     customPrompt.appendChild(prompt);
@@ -595,7 +710,7 @@ function createTimerElement(timer) {
       isEditMode = false;
       customPrompt.style.display = 'none';
       clearListeners();
-      selectLastFocusedH5Element();
+      selectLastFocusedTimerElement();
     }
   }
 
@@ -649,7 +764,7 @@ function createTimerElement(timer) {
     isEditMode = false;
 
     clearListeners();
-    selectLastFocusedH5Element();
+    selectLastFocusedTimerElement();
   }
 
   function clearListeners() {
@@ -659,15 +774,12 @@ function createTimerElement(timer) {
     document.removeEventListener('keydown', cancelPrompt);
   }
 
-
-
   function extractTags(note) {
-    // Regex to find all content after hashtags in the note
-    const tagRegex = /#(.+?(?=\n|\r\n|$))/g;
+    // Regex to find all content after hashtags in the note, allowing spaces
+    const tagRegex = /#[a-zA-Z0-9_]+( [a-zA-Z0-9_]+)*/g;
     const matches = note.match(tagRegex);
     return matches || [];
   }
-
   customPrompt.style.display = 'none';
   // Clear event listener after submitting
   prompt.removeEventListener('keydown', handlePromptKeydown);

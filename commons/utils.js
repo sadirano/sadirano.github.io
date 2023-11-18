@@ -2,30 +2,48 @@ function generateRandomId() {
     return Math.random().toString(36).substring(2, 11);
 }
 
-
-
 function showNotification(msg) {
-    // Check if the browser supports notifications
-    if (!("Notification" in window)) {
-        alert("This browser does not support system notifications");
-    }
-
-    // Check if permission to show notifications is granted
-    else if (Notification.permission === "granted") {
-        var notification = new Notification(msg);
-
-        // You can handle click events on the notification
-        // notification.onclick = function () {
-        //     // alert("Notification clicked");
-        // };
-    }
-
-    // If permission is not yet granted, request it
-    else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then(function (permission) {
-            if (permission === "granted") {
-                var notification = new Notification("It works!");
-            }
-        });
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+        // Register a service worker
+        navigator.serviceWorker.register('./commons/service-worker.js')
+            .then(async function (registration) {
+                // Check if permission to show notifications is granted
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    // Create a push notification
+                    return registration.showNotification(msg);
+                }
+            })
+            .catch(function (error) {
+                console.error('Error during service worker registration:', error);
+            });
+    } else {
+        console.warn('Service workers or PushManager not supported in this browser.');
     }
 }
+
+
+function requestClipboardPermission() {
+    navigator.permissions.query({ name: 'clipboard-write' })
+        .then(permissionStatus => {
+            // Check if the permission is already granted
+            if (permissionStatus.state === 'granted') {
+                return true;
+            } else if (permissionStatus.state === 'prompt') {
+                // The browser will prompt the user for permission
+                permissionStatus.onchange = () => {
+                    if (permissionStatus.state === 'granted') {
+                        return true;
+                    } else {
+                        console.warn('Clipboard permission denied.');
+                    }
+                };
+            } else {
+                console.warn('Clipboard permission denied.');
+            }
+        })
+        .catch(error => {
+            console.error('Error requesting clipboard permission:', error);
+        });
+}
+
