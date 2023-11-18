@@ -1,11 +1,14 @@
 const timers = [];
-let isEditMode = false;
-let shouldReload = false;
-let lastCountdownAdded;
 
+// Define default values for properties
+const defaultSettings = {
+  updateInterval: 60000,
+  displayTimeFormat: 'hh:mm:ss',
+  // Add other properties with default values as needed
+};
+const settings = loadSettings()
 
 function initializePage() {
-  updateSettings(settings);
   setInterval(refreshPageIfNeeded, settings.updateInterval);
   loadTimers();
   tribute = bindTribute();
@@ -54,7 +57,7 @@ function calculateNumberOfElementsInLine(container) {
 }
 
 document.addEventListener('keydown', function (event) {
-  if(isEditMode) return;
+  if (dynamicParamsManager.getParams().isEditMode) return;
   const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 
   // Check if the pressed key is an arrow key
@@ -115,7 +118,6 @@ document.addEventListener('keydown', function (event) {
 
 
 
-const settings = loadSettings();
 
 let lastFocusedTimerElement = null;
 document.addEventListener('focus', function (event) {
@@ -129,13 +131,19 @@ function selectLastFocusedTimerElement() {
   if (lastFocusedTimerElement !== undefined) lastFocusedTimerElement.focus();
 }
 
+
 function loadSettings() {
   try {
-    return JSON.parse(localStorage.getItem('settings')) || {};
+    const storedSettings = JSON.parse(localStorage.getItem('settings')) || {};
+
+    // Merge the stored settings with default settings
+    return { ...defaultSettings, ...storedSettings };
   } catch (error) {
-    return {
-      updateInterval: 60000,
-    };
+    // Handle parsing error or other issues
+    console.error('Error loading settings:', error);
+
+    // Return default settings in case of an error
+    return defaultSettings;
   }
 }
 function saveSettings() {
@@ -158,6 +166,34 @@ function saveColorMap() {
   localStorage.setItem('tagColorMap', JSON.stringify(tagColorMap));
   localStorage.setItem('tagColorMapLastUpdate', Date.now());
 }
+
+//Preparing for a setting that would allow the user to keep only used tags color in the map.
+function removeUnusedColors() {
+  const usedColors = new Set();
+
+  // Collect all colors used in the current tags
+  timers.forEach(timer => {
+    timer.tags.forEach(tag => {
+      const tagLowerCase = tag.toLowerCase();
+      if (tagColorMap[tagLowerCase]) {
+        usedColors.add(tagColorMap[tagLowerCase]);
+      }
+    });
+  });
+
+  // Filter the tagColorMap to keep only used colors
+  const updatedColorMap = Object.keys(tagColorMap)
+    .filter(tag => usedColors.has(tagColorMap[tag]))
+    .reduce((obj, tag) => {
+      obj[tag] = tagColorMap[tag];
+      return obj;
+    }, {});
+
+  // Update the tagColorMap and save it
+  tagColorMap = updatedColorMap;
+  saveColorMap();
+}
+
 
 const customKeywordsMap = loadCustomKeywordsMap();
 
@@ -271,9 +307,6 @@ function showSettings() {
   settingsWindow.style.display = 'block';
   displayGroup('generalSettings');
 }
-function updateSettings(settings) {
-  // Load settings online if the API is enabled.
-}
 
 function refreshPageIfNeeded() {
   const { isEditMode, shouldReload, lastUserInteraction } = dynamicParamsManager.getParams();
@@ -369,7 +402,6 @@ function newTimer() {
   const durationInput = 60;
   let duration = getDuration(durationInput);
   const startTime = Date.now();
-  const repeat = false;
   let timer = {
     timerId: generateRandomId(),
     name: timerName,
@@ -378,13 +410,15 @@ function newTimer() {
     input: durationInput,
     note: '',
     tags: [],
-    repeat: repeat
+    settings: defaultTimerSettings
   };
 
   const timerElement = createTimerElement(timer);
   timers.push(timer);
   timerList.appendChild(timerElement);
   saveTimers();
+  timerElement.focus();
+  timerElement.click();
 }
 
 function createTimerElement(timer) {
@@ -465,8 +499,6 @@ function createTimerElement(timer) {
       + note;
   }
 
-
-
   function updateBackgroundImage() {
     if (timer.note !== '' && timer.note !== undefined && timer.note !== 'undefined') {
       let noteLines = timer.note.split("\n");
@@ -507,7 +539,7 @@ function createTimerElement(timer) {
   let remainingTime_ms = timer.duration - Date.now() - timer.startTime;
   let currentClass = ""; // Initialize with an empty class
   let notified = false;
-  function updateCountdown(displayTimeFormat = "hhmmss") {
+  function updateCountdown() {
     remainingTime_ms = timer.duration * 1000 - (Date.now() - timer.startTime);
 
     if (Math.floor(remainingTime_ms / 1000) === 0 && !notified) {
@@ -515,33 +547,35 @@ function createTimerElement(timer) {
       let hora = new Date().toLocaleString("en-us", options);
       showNotification(timerName.textContent + " Done at " + hora);
       notified = true;
-      if (timer.fixed) refreshTimer();
+      if (timer.fixed || timer.repeat) refreshTimer();
     }
 
-    let formattedTime = millisecondsToTime(remainingTime_ms, displayTimeFormat);
+    let formattedTime = millisecondsToTime(remainingTime_ms, settings.displayTimeFormat);
 
     countdownDisplay.textContent = formattedTime;
 
     let percentage = (remainingTime_ms / (timer.duration * 1000)) * 100;
+    // Apply styles based on the percentage and timer rules
+    applyStyles(percentage, timer.settings.rules);
 
-    // Calculate the new class based on percentage
-    let newClass = "-normal";
-    if (percentage < 10) {
-      newClass = "-danger";
-    } else if (percentage < 25) {
-      newClass = "-alert";
-    } else if (percentage < 50) {
-      newClass = "-attention";
+    function applyStyles(percentage, rules) {
+      // Find the rule that matches the percentage
+      const matchingRule = rules.find(rule => percentage < rule.limit);
+    
+      // Apply styles based on the matching rule
+      if (matchingRule) {
+        countdownDisplay.style.color = matchingRule.color;
+        countdownDisplay.style.backgroundColor = matchingRule.backgroundColor;
+      } else {
+        // Provide a default style if no rule matches
+        countdownDisplay.style.color = '#0073e6';
+        countdownDisplay.style.backgroundColor = '#333';
+      }
     }
 
-    // Update the class only if it has changed
-    if (newClass !== currentClass) {
-      countdownDisplay.className = "countdown-display" + newClass;
-      currentClass = newClass; // Update the current class
-    }
   }
 
-  function millisecondsToTime(milliseconds, format = "hhmmss") {
+  function millisecondsToTime(milliseconds, format = "hh:mm:ss") {
     let negative = milliseconds < 0
 
     let absMilliseconds = Math.abs(milliseconds);
@@ -553,7 +587,7 @@ function createTimerElement(timer) {
 
     let formattedTime = "";
 
-    if (format === "hhmmss") {
+    if (format === "hh:mm:ss") {
       if (hours != 0) {
         formattedTime += `${padNumber(hours)}:`;
       }
@@ -644,8 +678,8 @@ function createTimerElement(timer) {
 
 
   function openPromptHandler(event) {
-    if (isEditMode) return;
-    isEditMode = true;
+    if (dynamicParamsManager.getParams().isEditMode) return;
+    dynamicParamsManager.updateParams({ isEditMode: true })
     // Elements to be excluded
     const excludeElements = [tagContainer, deleteButton, refreshButton];
 
@@ -672,12 +706,9 @@ function createTimerElement(timer) {
     }
   }
 
-
-
-
   // Updated openPrompt function to handle multiline notes input
   function openPrompt(initialValue) {
-    isEditMode = true;
+    dynamicParamsManager.updateParams({ isEditMode: true })
     customPrompt.style.display = 'flex';
 
     //    prompt.textContent = initialValue;
@@ -756,8 +787,10 @@ function createTimerElement(timer) {
     timer.note = newNote;
     updateNote();
     updateTags(timer, tagsDisplay, tagContainer); // Update the tags display
-
     updateBackgroundImage();
+
+    updateTimerSettings(timer.note);
+
     saveTimers();
 
     customPrompt.style.display = 'none';
@@ -765,6 +798,12 @@ function createTimerElement(timer) {
 
     clearListeners();
     selectLastFocusedTimerElement();
+  }
+  function updateTimerSettings() {
+    // Regex to find all content after hashtags in the note, allowing spaces
+    const tagRegex = /$[a-zA-Z0-9_]+( [a-zA-Z0-9_]+)*/g;
+    const matches = timer.note.match(tagRegex);
+    timer.settings = { ...timer.settings, ...matches }
   }
 
   function clearListeners() {
@@ -811,9 +850,19 @@ function saveTimers() {
   localStorage.setItem('timers', JSON.stringify(timers));
 }
 
+const defaultTimerSettings = {
+  repeat: false,
+  rules: [
+    { limit: 10, color: '#ff0000', backgroundColor: '#333' },
+    { limit: 20, color: '#ffa500', backgroundColor: '#333' },
+    { limit: 30, color: '#ffff00', backgroundColor: '#333' },
+  ]
+};
+
 function loadTimers() {
   const timerList = document.getElementById('timer-list');
-  let timersData = []
+  let timersData = [];
+
   try {
     timersData = JSON.parse(localStorage.getItem('timers')) || [];
   } catch (error) {
@@ -823,6 +872,9 @@ function loadTimers() {
   timersData
     .sort(function (a, b) { return (a.duration - Math.floor((Date.now() - a.startTime) / 1000)) - (b.duration - Math.floor((Date.now() - b.startTime) / 1000)) })
     .forEach((timer) => {
+      // Add default settings if it doesn't exist
+      timer.settings = timer.settings || defaultTimerSettings;
+
       if (!hasTag(timer)) timer.tags = [];
       const timerElement = createTimerElement(timer);
       timers.push(timer);
@@ -1071,6 +1123,7 @@ function toggleTaggedTimers(tag) {
     });
     filterTag = tag;
   }
+  applySearch();
 }
 
 

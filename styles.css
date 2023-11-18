@@ -82,7 +82,10 @@ input {
 .timer div h2 {
     display: flex;
     justify-content: center;
-    margin: auto;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 10px;
+    margin-bottom: 0px;
     font-size: xx-large;
 }
 
@@ -160,22 +163,6 @@ input {
 /* Optional: Hover effect */
 .floating-button button:hover {
     background-color: #2980b9;
-}
-
-.countdown-display-danger {
-    color: red;
-}
-
-.countdown-display-alert {
-    color: orange;
-}
-
-.countdown-display-attention {
-    color: yellow;
-}
-
-.countdown-display-normal {
-    color: #0073e6;
 }
 
 .timer-container {
