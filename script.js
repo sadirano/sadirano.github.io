@@ -4,9 +4,9 @@ const timers = [];
 const defaultSettings = {
   updateInterval: 60000,
   displayTimeFormat: 'hh:mm:ss',
-  showNotificationCommand: false,
+  showNotificationCommand: true,
   resultToSearchInput: true,
-  clearSearchInput: false,
+  clearSearchInput: true,
   showTimerButtons: true,
   showBottomMenu: true,
   showNotes: true,
@@ -751,6 +751,7 @@ function createTimerElement(timer) {
 
     startTimer();
     saveTimers();
+    delayForceReload();
   }
 
   function deleteTimer() {
@@ -1288,12 +1289,12 @@ function executeCommand(command) {
   }
 
   if (command.includes('/api=')) {
-    let api = searchInput.value.substring(4);
+    let api = command.substring(5).trim();
     if (!api) return;
 
     clearSearchInput();
 
-    localStorage.setItem('api', searchInput.value.substring(4).trim());
+    localStorage.setItem('api', api);
 
     showNotificationCommand("Api Configured with " + api);
     return;
@@ -1347,6 +1348,7 @@ function bindAutoCompleteCommands() {
     trigger: "/",
     values: options.sort((a, b) => a.value.localeCompare(b.value)),
     selectTemplate: function (item) {
+      if(item === undefined) return '';
       return item.original.key;
     },
     menuItemTemplate: function (item) {
