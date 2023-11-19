@@ -7,9 +7,15 @@ const defaultSettings = {
   showNotificationCommand: false,
   resultToSearchInput: true,
   clearSearchInput: false,
+  showTimerButtons: true,
+  showBottomMenu: true,
+  showNotes: true,
+  showStartTimeOnNotes: false,
+  showInputOnNotes: true
 };
 
 const settings = loadSettings()
+const searchInput = document.getElementById('search-input');
 
 function initializePage() {
   setInterval(refreshPageIfNeeded, settings.updateInterval);
@@ -20,12 +26,16 @@ function initializePage() {
   document.addEventListener('keydown', backupToClipboard);
   document.addEventListener('keydown', loadBackupFromClipboard);
   document.addEventListener('keydown', createNewTimerEvent);
+  document.addEventListener('keydown', focusSearchBar);
+
   document.addEventListener('keydown', function (event) {
     if (event.ctrlKey && event.key === " ") {
       event.preventDefault();
     }
   });
-
+  if (!settings.showBottomMenu) {
+    document.getElementById('bottom-bar').style.display = 'none'
+  }
 }
 
 function calculateNumberOfElementsInLine(container) {
@@ -228,6 +238,15 @@ function loadCustomKeywordsMap() {
   }
 }
 
+function saveCustomKeywordsMap() {
+  localStorage.setItem('customKeywordsMap', customKeywordsMap);
+}
+
+function updateCustomKeywordsMap(item) {
+  customKeywordsMap.setItem(item.key, item.value);
+  localStorage.setItem('customKeywordsMap', customKeywordsMap);
+}
+
 const dynamicParamsManager = (function () {
   let dynamicParams = {
     isEditMode: false,
@@ -329,14 +348,17 @@ function showSettings() {
   displayGroup('generalSettings');
 }
 
-function refreshPageIfNeeded() {
+function refreshPageIfNeeded(force = false) {
   const { isEditMode, shouldReload, lastUserInteraction } = dynamicParamsManager.getParams();
   const { updateInterval } = settings;
-  if (!isEditMode && shouldReload && lastUserInteraction > Date.now() - updateInterval) {
+  if (force || !isEditMode && shouldReload && lastUserInteraction > Date.now() - updateInterval) {
     location.reload();
   }
 }
 
+function delayForceReload() {
+  setTimeout(refreshPageIfNeeded, 3000, true);
+}
 
 // Function to backup timers to clipboard
 async function backupToClipboard(event) {
@@ -501,13 +523,19 @@ function createTimerElement(timer) {
   refreshButton.className = 'material-symbols-outlined refresh-button';
   refreshButton.innerHTML = 'replay';
 
-  if (timer.fixed) {
-    refreshButton.style.visibility = 'hidden';
-  }
 
   const deleteButton = document.createElement('span');
   deleteButton.className = 'material-symbols-outlined delete-button';
   deleteButton.innerHTML = 'delete';
+
+  if (timer.fixed || !settings.showTimerButtons) {
+    refreshButton.style.visibility = 'hidden';
+  }
+
+  if (!settings.showTimerButtons) {
+    deleteButton.style.visibility = 'hidden';
+  }
+
 
   const divmain = document.createElement('div');
   divmain.className = 'div-main';
@@ -524,39 +552,31 @@ function createTimerElement(timer) {
   tagContainer.className = 'tag-container';
 
 
-  let displayTimeout;
-  let updateTimeout;
-
-  timerElement.addEventListener('mouseenter', function () {
-    clearTimeout(updateTimeout); // Clear update timeout if it was set
-    displayTimeout = setTimeout(displayNote, 2000);
-  });
-
-  timerElement.addEventListener('mouseout', function (event) {
-    // Check if the mouse is leaving the timerElement and not just entering a child element
-    if (!timerElement.contains(event.relatedTarget || event.toElement)) {
-      clearTimeout(displayTimeout);
-      updateTimeout = setTimeout(updateNote, 2000);
-    }
-  });
+  displayNote();
 
   function displayNote() {
+    if (settings.hideAllNotes) {
+      divElement.innerHTML = '';
+      return;
+    }
     let note = '';
     let hour = formatTime(timer.startTime, timer.duration);
     if (timer.note !== '' && timer.note !== undefined && timer.note !== 'undefined') {
       let noteLines = timer.note.split("\n");
       for (let line of noteLines) {
-        if (!line.trim().startsWith("img=")
-          && !line.trim().startsWith("#")
-          && !line.trim().startsWith("!")
+        if (!line.trim().startsWith("img=") //Image config
+          && !line.trim().startsWith("#") // Tag
+          && !line.trim().startsWith(">") // Hidden line note.
         ) {
           note += line.trim() + '<br>';
         }
       }
     }
     divElement.innerHTML = ''
-      + hour.startTime + ' / ' + hour.endTime + ' - ' + timer.input + '<br>'
-      + note;
+      + (settings.showStartTimeOnNotes ? hour.startTime + ' / ' : '')
+      + hour.endTime //Always shows the endtime.
+      + (settings.showInputOnNotes ? ' - ' + timer.input : '')
+      + '<br>' + note;
   }
 
   function updateBackgroundImage() {
@@ -597,7 +617,6 @@ function createTimerElement(timer) {
 
   let timerInterval;
   let remainingTime_ms = timer.duration - Date.now() - timer.startTime;
-  let currentClass = ""; // Initialize with an empty class
   let notified = false;
   function updateCountdown() {
     remainingTime_ms = timer.duration * 1000 - (Date.now() - timer.startTime);
@@ -607,7 +626,7 @@ function createTimerElement(timer) {
       let hora = new Date().toLocaleString("en-us", options);
       showNotification(timerName.textContent + " Done at " + hora);
       notified = true;
-      if (timer.fixed || timer.repeat) refreshTimer();
+      if (timer.fixed || timer.repeat) refreshTimerDelayed();
     }
 
     let formattedTime = millisecondsToTime(remainingTime_ms, settings.displayTimeFormat);
@@ -625,11 +644,11 @@ function createTimerElement(timer) {
       // Apply styles based on the matching rule
       if (matchingRule) {
         countdownDisplay.style.color = matchingRule.color;
-        countdownDisplay.style.backgroundColor = matchingRule.backgroundColor;
+        // countdownDisplay.style.backgroundColor = matchingRule.backgroundColor;
       } else {
         // Provide a default style if no rule matches
         countdownDisplay.style.color = '#0073e6';
-        countdownDisplay.style.backgroundColor = '#333';
+        // countdownDisplay.style.backgroundColor = '#333';
       }
     }
 
@@ -701,6 +720,11 @@ function createTimerElement(timer) {
         event.preventDefault();
         openPromptHandler(event);
         break;
+      case "F":
+        event.preventDefault();
+        timer.input = formatTime(timer.startTime, timer.duration).endTime;
+        refreshTimerDelayed();
+        break;
 
       default:
         break;
@@ -712,6 +736,10 @@ function createTimerElement(timer) {
   // Refresh button functionality
   refreshButton.addEventListener('click', refreshTimer);
 
+  function refreshTimerDelayed() {
+    setTimeout(refreshTimer, 3000);
+  }
+
   function refreshTimer() {
     clearInterval(timerInterval);
 
@@ -719,7 +747,6 @@ function createTimerElement(timer) {
     durationDisplay.textContent = `${newDuration}`;
     timer.startTime = Date.now();
     timer.duration = newDuration;
-    timer.fixed = timer.input.includes(':');
     notified = false;
 
     startTimer();
@@ -807,7 +834,7 @@ function createTimerElement(timer) {
 
 
 
-  // Updated submitPrompt function to handle notes changes
+  // Updated submitPrompt function to handle notes changes save Edited Timer
   function submitPrompt() {
     const inputValue = prompt.value;
 
@@ -818,13 +845,16 @@ function createTimerElement(timer) {
     const durationInput = lines[0].trim();
     let newDuration = getDuration(durationInput);
 
+    //Handle new duration.
     if (!isNaN(newDuration) && newDuration > 0 && newDuration != timer.duration) {
       clearInterval(timerInterval);
       durationDisplay.textContent = `${newDuration}`;
       timer.startTime = Date.now();
       timer.duration = newDuration;
       timer.input = durationInput;
-      timer.repeat = false;
+      timer.fixed = timer.input.includes(':');
+      const validInputs = ['odd', 'even', 'next'];
+      timer.repeat = validInputs.includes(timer.input.toLowerCase());
 
       updateCountdown();
       saveTimers();
@@ -845,7 +875,7 @@ function createTimerElement(timer) {
     const newTags = extractTags(newNote);
     timer.tags = newTags;
     timer.note = newNote;
-    updateNote();
+    displayNote();
     updateTags(timer, tagsDisplay, tagContainer); // Update the tags display
     updateBackgroundImage();
 
@@ -885,23 +915,7 @@ function createTimerElement(timer) {
   dynamicParamsManager.updateParams({ isEditMode: false })
 
 
-  updateNote();
-
-  function updateNote() {
-    let note = '';
-    if (timer.note !== '' && timer.note !== undefined && timer.note !== 'undefined') {
-      let noteLines = timer.note.split("\n");
-      for (let line of noteLines) {
-        if (line.trim().startsWith("!")) {
-          note += line.substring(1).trim() + '<br>';
-        }
-      }
-    }
-    divElement.innerHTML = note; // Show the formatted note
-  }
-
-
-
+  displayNote();
   startTimer();
   return timerElement;
 }
@@ -957,10 +971,10 @@ function applySearchWithDelay() {
 }
 
 function applySearch() {
-  const searchInput = document.getElementById('search-input').value.toLowerCase();
+  const searchInputValue = searchInput.value.toLowerCase();
 
-  if (searchInput.startsWith('/')) {
-    executeCommand(searchInput);
+  if (searchInputValue.startsWith('/')) {
+    executeCommand(searchInput.value);
     return
   }
 
@@ -970,7 +984,7 @@ function applySearch() {
   const maxRemaining = getDuration(document.getElementById('max-remaining').value);
 
   Array.from(timerElements).forEach(timerElement => {
-    if (timerElement.style.display === 'none' && searchInput !== '') return;
+    if (timerElement.style.display === 'none' && searchInputValue !== '') return;
     const timer = timers.find(timer => timer.timerId === timerElement.dataset.timerId);
     const tags_text = timer.tags === undefined ? '' : timer.tags.join(' ');
     const timerText = `${timer.name} ${timer.note} ${timer.input} ${tags_text}`.toLowerCase();
@@ -978,7 +992,7 @@ function applySearch() {
     const remainingSeconds = timer.duration - Math.floor(Date.now() - timer.startTime) / 1000;
 
     // Check if the timer's text contains the search input and is within the remaining time range
-    const meetsSearchCriteria = timerText.includes(searchInput);
+    const meetsSearchCriteria = timerText.includes(searchInputValue);
     const meetsMinTimeCriteria = minRemaining === "" || minRemaining <= remainingSeconds;
     const meetsMaxTimeCriteria = maxRemaining === "" || remainingSeconds <= maxRemaining;
 
@@ -1204,13 +1218,13 @@ document.addEventListener('click', function (event) {
 
 function clearSearchInput(force) {
   if (force || settings.clearSearchInput) {
-    document.getElementById('search-input').value = '';
+    searchInput.value = '';
   }
 }
 
 function showResult(result) {
   if (settings.resultToSearchInput) {
-    document.getElementById('search-input').value = result;
+    searchInput.value = result;
   }
 }
 
@@ -1220,41 +1234,96 @@ function showNotificationCommand(msg) {
   }
 }
 
+function focusSearchBar(event) {
+  if (event.ctrlKey && event.key === 'f') {
+    event.preventDefault();
+    searchInput.focus();
+    searchInput.select();
+  }
+  if (event.ctrlKey && event.key === '/') {
+    searchInput.focus();
+    searchInput.value = '/';
+  }
 
+}
+
+function updateButtonVisibility() {
+
+
+}
+
+
+function toggleSetting(command, setting, toggleMessage, toggleFunction) {
+  if (command.includes(`/toggle${setting}`)) {
+    setting = uncapitalizeFirstLetter(setting);
+    settings[setting] = !settings[setting];
+    saveSettings();
+    clearSearchInput();
+    showResult(toggleMessage);
+    if (toggleFunction) {
+      toggleFunction(); // Call additional function if provided
+    }
+  }
+}
 
 function executeCommand(command) {
 
+  toggleSetting(command, 'ShowTimerButtons', '', delayForceReload);
+  toggleSetting(command, 'ShowBottomMenu', '', delayForceReload);
+  toggleSetting(command, 'ShowNotificationCommand', 'Notifications back online!');
+  toggleSetting(command, 'ResultToSearchInput', 'Command results back to the Search bar.');
+  toggleSetting(command, 'ClearSearchInput', 'The input was cleared, believe me.');
+  toggleSetting(command, 'HideAllNotes', '', delayForceReload);
+  toggleSetting(command, 'ShowStartTimeOnNotes', '', delayForceReload);
+  toggleSetting(command, 'ShowInputOnNotes', '', delayForceReload);
+
+  if (command.includes('/toggleAds')) {
+    clearSearchInput();
+    showResult('Thank you for trying.');
+  }
+
+  if (command.includes('/help')) {
+    clearSearchInput();
+    showResult('Sorry, can\'t help at the moment, please try again later.');
+  }
+
   if (command.includes('/api=')) {
-    let api = searchInput.substring(4);
+    let api = searchInput.value.substring(4);
     if (!api) return;
 
     clearSearchInput();
 
-    localStorage.setItem('api', searchInput.substring(4).trim());
+    localStorage.setItem('api', searchInput.value.substring(4).trim());
 
     showNotificationCommand("Api Configured with " + api);
     return;
   }
 
-  if (command.includes('/toggleTimerButtons')) {
-    settings.toggleTimerButtons = !settings.toggleTimerButtons
-  }
-  if (command.includes('/toggleShowNotificationCommand')) {
-    settings.showNotificationCommand = !settings.showNotificationCommand
-  }
-  if (command.includes('/toggleResultToSearchInput')) {
-    settings.resultToSearchInput = !settings.resultToSearchInput
-  }
-  if (command.includes('/toggleClearSearchInput')) {
-    settings.clearSearchInput = !settings.clearSearchInput
-  }
-
-
-
   if (command.includes('/api?')) {
     clearSearchInput();
 
     showResult(localStorage.getItem('api'));
+    return;
+  }
+
+  const keywordMatch = command.match(/\/(\S+)=.+/);
+
+  if (keywordMatch) {
+    const keyword = keywordMatch[1];
+    const input = keywordMatch[1];
+    clearSearchInput();
+    updateCustomKeywordsMap({ key: keyword, value: input })
+
+    showNotificationCommand(`Keyword ${keyword} configured with ${input}.`);
+    return;
+  }
+
+  const keywordQuestionMatch = command.match(/\/(\S+)\?/);
+
+  if (keywordQuestionMatch) {
+    const keyword = keywordQuestionMatch[1];
+    clearSearchInput();
+    showResult(customKeywordsMap.getItem(keyword));
     return;
   }
 
@@ -1266,23 +1335,17 @@ function executeCommand(command) {
     showNotificationCommand("Sadirano's Profile Loaded!");
   }
 
+  if (command.includes('/cleanColorMap')) {
+    removeUnusedColors();
+    clearSearchInput();
+    showNotificationCommand("Color map cleared.");
+  }
 }
-
 
 function bindAutoCompleteCommands() {
   var tribute = new Tribute({
     trigger: "/",
-    values: [
-      { key: '/api?', value: 'Retrieve API', },
-      { key: '/api=', value: 'Setup API', },
-      { key: '/toggleTimerButtons', value: 'Toggle Timer Buttons', },
-      { key: '/sadirano-configs', value: 'Sadirano\'s Profile Config ', },
-      { key: '/toggleShowNotificationCommand', value: 'Toggle Command Notification', },
-      { key: '/toggleResultToSearchInput', value: 'Toggle option to output the result to the Search Bar', },
-      { key: '/toggleClearSearchInput', value: 'Toggle option to Clear the Search Bar after Executing the Command', },
-    ],
-
-    replaceTextSuffix: '\n',
+    values: options.sort((a, b) => a.value.localeCompare(b.value)),
     selectTemplate: function (item) {
       return item.original.key;
     },
@@ -1290,14 +1353,29 @@ function bindAutoCompleteCommands() {
       return item.original.value;
     },
     lookup: function (item) {
-      return item.key + item.value
+      return item.value + item.key
     }
   });
 
   // Attach tribute to the input element
-  tribute.attach(document.getElementById("search-input"));
+  tribute.attach(searchInput);
 
   return tribute;
 }
 
-
+const options = [
+  { key: '/api?', value: 'Retrieve API', },
+  { key: '/api=', value: 'Setup API', },
+  { key: '/toggleShowTimerButtons', value: 'Toggle Timer Buttons', },
+  { key: '/toggleShowBottomMenu', value: 'Toggle Bottom Menu Bar', },
+  { key: '/sadirano-configs', value: 'Sadirano\'s Profile Config ', },
+  { key: '/toggleShowNotificationCommand', value: 'Toggle Command Notification', },
+  { key: '/toggleResultToSearchInput', value: 'Toggle option to output the result to the Search Bar', },
+  { key: '/toggleClearSearchInput', value: 'Toggle option to Clear the Search Bar after Executing the Command', },
+  { key: '/cleanColorMap', value: 'Remove unused color tags', },
+  { key: '/toggleAds', value: 'The Ads Opt-in option', },
+  { key: '/help', value: 'Are you looking for help ? Me too.', },
+  { key: '/toggleHideAllNotes', value: 'Show/Hide all Notes', },
+  { key: '/toggleShowStartTimeOnNotes', value: 'Toggle Start Time on Notes', },
+  { key: '/toggleShowInputOnNotes', value: 'Toggle Input on Notes', },
+];

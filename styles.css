@@ -355,3 +355,16 @@ input {
     }
 }
 
+@media screen and (min-width: 600) and (max-width: 1500px)  {
+    .timer {
+        width: 25%;
+    }
+}
+
+@media screen  and (min-width: 1600) and (max-width: 2500px) {
+    .timer {
+        width: 15%;
+    }
+}
+
+

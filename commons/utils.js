@@ -12,6 +12,14 @@ async function checkNotificationPermission() {
     }
 }
 
+function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+function uncapitalizeFirstLetter(string) {
+    return string.charAt(0).toLowerCase() + string.slice(1);
+}
+
 function showNotification(msg) {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
         // Register a service worker
