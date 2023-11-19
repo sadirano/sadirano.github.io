@@ -255,7 +255,7 @@ const dynamicParamsManager = (function () {
   };
 
   function updateParams({ isEditMode, shouldReload, lastUserInteraction }) {
-    dynamicParams.isEditMode = isEditMode !== undefined ? isEditMode : dynamicParams.isEditMode;
+dynamicParams.isEditMode = isEditMode !== undefined ? isEditMode : dynamicParams.isEditMode;
     dynamicParams.shouldReload = shouldReload !== undefined ? shouldReload : dynamicParams.shouldReload;
     dynamicParams.lastUserInteraction = lastUserInteraction !== undefined ? lastUserInteraction : dynamicParams.lastUserInteraction;
   }
@@ -629,6 +629,8 @@ function createTimerElement(timer) {
       if (timer.fixed || timer.repeat) refreshTimerDelayed();
     }
 
+    if (timer.remainingTime_ms < 10000 && (timer.fixed || timer.repeat)) refreshTimerDelayed();
+
     let formattedTime = millisecondsToTime(remainingTime_ms, settings.displayTimeFormat);
 
     countdownDisplay.textContent = formattedTime;
@@ -767,7 +769,7 @@ function createTimerElement(timer) {
 
   function openPromptHandler(event) {
     if (dynamicParamsManager.getParams().isEditMode) return;
-    dynamicParamsManager.updateParams({ isEditMode: true })
+    
     // Elements to be excluded
     const excludeElements = [tagContainer, deleteButton, refreshButton];
 
@@ -913,7 +915,6 @@ function createTimerElement(timer) {
   customPrompt.style.display = 'none';
   // Clear event listener after submitting
   prompt.removeEventListener('keydown', handlePromptKeydown);
-  dynamicParamsManager.updateParams({ isEditMode: false })
 
 
   displayNote();
@@ -971,7 +972,7 @@ function applySearchWithDelay() {
   searchTimer = setTimeout(applySearch, 500);
 }
 
-function applySearch() {
+function applySearch(filterTag) {
   const searchInputValue = searchInput.value.toLowerCase();
 
   if (searchInputValue.startsWith('/')) {
@@ -985,7 +986,7 @@ function applySearch() {
   const maxRemaining = getDuration(document.getElementById('max-remaining').value);
 
   Array.from(timerElements).forEach(timerElement => {
-    if (timerElement.style.display === 'none' && searchInputValue !== '') return;
+    if (timerElement.style.display === 'none' && searchInputValue !== '' || filterTag) return;
     const timer = timers.find(timer => timer.timerId === timerElement.dataset.timerId);
     const tags_text = timer.tags === undefined ? '' : timer.tags.join(' ');
     const timerText = `${timer.name} ${timer.note} ${timer.input} ${tags_text}`.toLowerCase();
@@ -1205,7 +1206,7 @@ function toggleTaggedTimers(tag) {
     });
     filterTag = tag;
   }
-  applySearch();
+  applySearch(filterTag);
 }
 
 
@@ -1300,6 +1301,15 @@ function executeCommand(command) {
     return;
   }
 
+  if (command.includes('/apiRemove')) {
+    clearSearchInput();
+
+    localStorage.removeItem('api');
+
+    showNotificationCommand("Api removed.");
+    return;
+  }
+
   if (command.includes('/api?')) {
     clearSearchInput();
 
@@ -1367,6 +1377,7 @@ function bindAutoCompleteCommands() {
 
 const options = [
   { key: '/api?', value: 'Retrieve API', },
+  { key: '/apiRemove', value: 'Remove API', },
   { key: '/api=', value: 'Setup API', },
   { key: '/toggleShowTimerButtons', value: 'Toggle Timer Buttons', },
   { key: '/toggleShowBottomMenu', value: 'Toggle Bottom Menu Bar', },
