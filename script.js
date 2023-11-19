@@ -38,12 +38,12 @@ function initializePage() {
   }
 }
 
-function calculateNumberOfElementsInLine(container) {
+function calculateNumberOfElementsInLine(container, currentElement) {
   // Get the width of the container
   const containerWidth = container.clientWidth;
 
-  // Get the width of the first focusable element (assuming all elements have the same width)
-  const elementWidth = document.querySelector('[tabindex]').clientWidth;
+  // Get the width of the current element (assuming all elements have the same width)
+  const elementWidth = currentElement.clientWidth;
 
   // Calculate the number of elements that can fit in a line
   const numberOfElementsInLine = Math.floor(containerWidth / elementWidth);
@@ -75,7 +75,7 @@ document.addEventListener('keydown', function (event) {
 
     // Find all focusable elements on the page
     const focusableElements = Array.from(document.querySelectorAll('[tabindex]'))
-      .filter(element => !element.hasAttribute('disabled'));
+      .filter(element => !(element.hasAttribute('disabled') || element.style.display === 'none'));
 
     // Find the index of the currently focused element in the array
     const currentIndex = focusableElements.indexOf(focusedElement);
@@ -84,7 +84,7 @@ document.addEventListener('keydown', function (event) {
     const container = document.querySelector('.timer-container');
 
     // Calculate the number of elements in a line dynamically
-    const numberOfElementsInLine = calculateNumberOfElementsInLine(container);
+    const numberOfElementsInLine = calculateNumberOfElementsInLine(container, focusedElement);
 
     if (previousColumn === -1) {
       previousColumn = currentIndex % numberOfElementsInLine;
