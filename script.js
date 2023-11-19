@@ -11,7 +11,9 @@ const defaultSettings = {
   showBottomMenu: true,
   showNotes: true,
   showStartTimeOnNotes: false,
-  showInputOnNotes: true
+  showInputOnNotes: true,
+  allowForcedReloadOnRefresh: true,
+  autoRepeatFixedTimers : true,
 };
 
 const settings = loadSettings()
@@ -36,6 +38,8 @@ function initializePage() {
   if (!settings.showBottomMenu) {
     document.getElementById('bottom-bar').style.display = 'none'
   }
+  searchInput.value = searchInputValue;
+  applySearch(filterTag);
 }
 
 function calculateNumberOfElementsInLine(container, currentElement) {
@@ -575,7 +579,7 @@ function createTimerElement(timer) {
     divElement.innerHTML = ''
       + (settings.showStartTimeOnNotes ? hour.startTime + ' / ' : '')
       + hour.endTime //Always shows the endtime.
-      + (settings.showInputOnNotes ? ' - ' + timer.input : '')
+      + ((settings.showInputOnNotes && !timer.fixed) ? ' - ' + timer.input : '')
       + '<br>' + note;
   }
 
@@ -626,10 +630,10 @@ function createTimerElement(timer) {
       let hora = new Date().toLocaleString("en-us", options);
       showNotification(timerName.textContent + " Done at " + hora);
       notified = true;
-      if (timer.fixed || timer.repeat) refreshTimerDelayed();
+      if (timer.fixed || timer.settings.repeat) refreshTimerDelayed();
     }
 
-    if (timer.remainingTime_ms < 10000 && (timer.fixed || timer.repeat)) refreshTimerDelayed();
+    if (timer.remainingTime_ms < 10000 && (timer.fixed || timer.settings.repeat)) refreshTimerDelayed();
 
     let formattedTime = millisecondsToTime(remainingTime_ms, settings.displayTimeFormat);
 
@@ -725,7 +729,7 @@ function createTimerElement(timer) {
       case "F":
         event.preventDefault();
         timer.input = formatTime(timer.startTime, timer.duration).endTime;
-        refreshTimerDelayed();
+        displayNote()
         break;
 
       default:
@@ -739,7 +743,7 @@ function createTimerElement(timer) {
   refreshButton.addEventListener('click', refreshTimer);
 
   function refreshTimerDelayed() {
-    setTimeout(refreshTimer, 3000);
+    setTimeout(refreshTimer, 10000);
   }
 
   function refreshTimer() {
@@ -753,7 +757,11 @@ function createTimerElement(timer) {
 
     startTimer();
     saveTimers();
-    delayForceReload();
+    if(settings.allowForcedReloadOnRefresh) {
+      delayForceReload();
+    } else {
+      displayNote()
+    }
   }
 
   function deleteTimer() {
@@ -857,7 +865,7 @@ function createTimerElement(timer) {
       timer.input = durationInput;
       timer.fixed = timer.input.includes(':');
       const validInputs = ['odd', 'even', 'next'];
-      timer.repeat = validInputs.includes(timer.input.toLowerCase());
+      timer.settings.repeat = validInputs.includes(timer.input.toLowerCase()) || (timer.fixed && settings.autoRepeatFixedTimers) ;
 
       updateCountdown();
       saveTimers();
@@ -972,8 +980,20 @@ function applySearchWithDelay() {
   searchTimer = setTimeout(applySearch, 500);
 }
 
-function applySearch(filterTag) {
-  const searchInputValue = searchInput.value.toLowerCase();
+// Load filters and search parameters from localStorage
+let filterTag = localStorage.getItem('filterTag') || '';
+let searchInputValue = localStorage.getItem('searchInputValue') || '';
+
+function applySearch(clickedTag) {
+  filterTag == clickedTag ? "" : clickedTag;
+  applySearchInternal(searchInput.value.toLowerCase(), filterTag);
+}
+
+function applySearchInternal(searchInputValue, filterTag) {
+
+  // Save filters and search parameters to localStorage
+  localStorage.setItem('filterTag', filterTag);
+  localStorage.setItem('searchInputValue', searchInputValue);
 
   if (searchInputValue.startsWith('/')) {
     executeCommand(searchInput.value);
@@ -986,7 +1006,6 @@ function applySearch(filterTag) {
   const maxRemaining = getDuration(document.getElementById('max-remaining').value);
 
   Array.from(timerElements).forEach(timerElement => {
-    if (timerElement.style.display === 'none' && searchInputValue !== '' || filterTag) return;
     const timer = timers.find(timer => timer.timerId === timerElement.dataset.timerId);
     const tags_text = timer.tags === undefined ? '' : timer.tags.join(' ');
     const timerText = `${timer.name} ${timer.note} ${timer.input} ${tags_text}`.toLowerCase();
@@ -995,10 +1014,11 @@ function applySearch(filterTag) {
 
     // Check if the timer's text contains the search input and is within the remaining time range
     const meetsSearchCriteria = timerText.includes(searchInputValue);
+    const meetsTagFilterCriteria = filterTag ? timer.tags.includes(filterTag) : true;
     const meetsMinTimeCriteria = minRemaining === "" || minRemaining <= remainingSeconds;
     const meetsMaxTimeCriteria = maxRemaining === "" || remainingSeconds <= maxRemaining;
 
-    timerElement.style.display = meetsSearchCriteria && meetsMinTimeCriteria && meetsMaxTimeCriteria ? 'flex' : 'none';
+    timerElement.style.display = meetsTagFilterCriteria && meetsSearchCriteria && meetsMinTimeCriteria && meetsMaxTimeCriteria ? 'flex' : 'none';
   });
 }
 
@@ -1025,7 +1045,7 @@ function updateTags(timer, tagsDisplay, tagContainer) {
 
     // Add event listener to the tag icon for showing/hiding timers with the same tag
     tagElement.addEventListener('click', function () {
-      toggleTaggedTimers(tag);
+      applySearch(tag);
     });
 
     // Add event listener for changing the tag color
@@ -1186,30 +1206,6 @@ function showColorPicker(event, tag) {
   document.addEventListener('keypress', colorConfirmHandler);
 }
 
-
-let filterTag = "";
-
-function toggleTaggedTimers(tag) {
-  applySearch();
-  const timerElements = document.getElementsByClassName('timer');
-  if (filterTag === tag) {
-    Array.from(timerElements).forEach(timerElement => {
-      timerElement.style.display = 'flex';
-    });
-    filterTag = "";
-  } else {
-    Array.from(timerElements).forEach(timerElement => {
-      const timer = timers.find(timer => timer.timerId === timerElement.dataset.timerId);
-      if (!hasTag(timer) || hasTag(timer) && !timer.tags.includes(tag) && timerElement.style.display === 'flex') {
-        timerElement.style.display = 'none';
-      }
-    });
-    filterTag = tag;
-  }
-  applySearch(filterTag);
-}
-
-
 // Add an event listener to the document to handle clicks outside the color picker and confirm button
 document.addEventListener('click', function (event) {
   const colorPickerContainer = document.getElementById('colorPickerContainer');
@@ -1278,6 +1274,9 @@ function executeCommand(command) {
   toggleSetting(command, 'HideAllNotes', '', delayForceReload);
   toggleSetting(command, 'ShowStartTimeOnNotes', '', delayForceReload);
   toggleSetting(command, 'ShowInputOnNotes', '', delayForceReload);
+  toggleSetting(command, 'AllowForcedReloadOnRefresh', '', delayForceReload);
+  toggleSetting(command, 'AutoRepeatFixedTimers', '', delayForceReload);
+  
 
   if (command.includes('/toggleAds')) {
     clearSearchInput();
@@ -1391,4 +1390,7 @@ const options = [
   { key: '/toggleHideAllNotes', value: 'Show/Hide all Notes', },
   { key: '/toggleShowStartTimeOnNotes', value: 'Toggle Start Time on Notes', },
   { key: '/toggleShowInputOnNotes', value: 'Toggle Input on Notes', },
+  { key: '/toggleAllowForcedReloadOnRefresh', value: 'Toggle Forced Reload by the App', },
+  { key: '/toggleAutoRepeatFixedTimers', value: 'Toggle Automatic Repeat for Fixed Timers', },
+  
 ];
