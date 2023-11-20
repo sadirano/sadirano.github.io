@@ -5,13 +5,11 @@
     <title>Sad Timer</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
-    <script src="commons/utils.js"></script>
-    <script src="commons/time.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/zurb/tribute/dist/tribute.min.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
-    <script src="./script.js" defer></script>
+    <script type="module" src="./main.js" defer></script>
 </head>
 
 <body>
@@ -25,13 +23,13 @@
     </div>
 
     <div id="search-container">
-        <input type="text" id="search-input" placeholder="Search..." oninput="applySearchWithDelay()">
-        <span class="material-symbols-outlined" onclick="toggleAdvancedSearch()">tune</span>
+        <input type="text" id="search-input" placeholder="Search..." oninput="sbm.applySearchWithDelay()">
+        <span class="material-symbols-outlined" onclick="sbm.toggleAdvancedSearch()">tune</span>
     </div>
     <div id="advanced-search-container">
         <div id="advanced-search-options" style="display: none;">
-            <input id="min-remaining" class="sad-input" min="0" placeholder="Min Time" oninput="applySearchWithDelay()">
-            <input id="max-remaining" class="sad-input" min="0" placeholder="Max Time" oninput="applySearchWithDelay()">
+            <input id="min-remaining" class="sad-input" min="0" placeholder="Min Time" oninput="sbm.applySearchWithDelay()">
+            <input id="max-remaining" class="sad-input" min="0" placeholder="Max Time" oninput="sbm.applySearchWithDelay()">
         </div>
     </div>
     <div class="timer-container" id="timer-list"> </div>

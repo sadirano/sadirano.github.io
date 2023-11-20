@@ -1,4 +1,4 @@
-function formatTime(startTimestamp, durationInSeconds) {
+export function formatTime(startTimestamp, durationInSeconds) {
   // Calculate the end timestamp
   var endTimestamp = startTimestamp + (durationInSeconds * 1000);
 
@@ -25,7 +25,7 @@ function formatTime(startTimestamp, durationInSeconds) {
   return { startTime: startTimeString, endTime: endTimeString };
 }
 
-function timeStringToSeconds(timeString) {
+export function timeStringToSeconds(timeString) {
   const [timeComponent, expression = ''] = timeString.split(/\s+(.+)/);
 
   const daysMatch = timeComponent.match(/(\d+)d/);
@@ -67,7 +67,7 @@ function timeStringToSeconds(timeString) {
   return totalSeconds;
 }
 
-function hourStringToSeconds(timeString) {
+export function hourStringToSeconds(timeString) {
   const [hours, minutes] = timeString.split(':').map(Number);
   if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
     throw new Error("Invalid time format. Please use the format 'HH:mm'.");
@@ -85,7 +85,7 @@ function hourStringToSeconds(timeString) {
   return Math.round(timeDifference);
 }
 
-function textSecondsRemaining(condition) {
+export function textSecondsRemaining(condition) {
   var now = new Date();
 
   var targetHour;
@@ -116,7 +116,7 @@ function textSecondsRemaining(condition) {
   return timeDiff;
 }
 
-function getDuration(timerDurationInput) {
+export function getDuration(timerDurationInput) {
   try {
     // Try to evaluate the expression directly using eval
     const evaluatedValue = eval(getDurationInternal(timerDurationInput));
@@ -127,7 +127,7 @@ function getDuration(timerDurationInput) {
   return timerDurationInput;
 }
 
-function getDurationInternal(timerDurationInput) {
+export function getDurationInternal(timerDurationInput) {
   if (timerDurationInput in customKeywordsMap) {
     // If the input is a custom keyword, recursively process its components
     const components = customKeywordsMap[timerDurationInput].split(/\s*\*\s*/);

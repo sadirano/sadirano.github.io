@@ -1,8 +1,8 @@
-function generateRandomId() {
+export function generateRandomId() {
     return Math.random().toString(36).substring(2, 11);
 }
 
-async function checkNotificationPermission() {
+export async function checkNotificationPermission() {
     if ('Notification' in window) {
         const permission = await Notification.requestPermission();
         return permission === 'granted';
@@ -12,15 +12,15 @@ async function checkNotificationPermission() {
     }
 }
 
-function capitalizeFirstLetter(string) {
+export function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-function uncapitalizeFirstLetter(string) {
+export function uncapitalizeFirstLetter(string) {
     return string.charAt(0).toLowerCase() + string.slice(1);
 }
 
-function showNotification(msg) {
+export function showNotification(msg) {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
         // Register a service worker
         navigator.serviceWorker.register('./commons/service-worker.js')
@@ -40,7 +40,7 @@ function showNotification(msg) {
     }
 }
 
-function requestClipboardPermission() {
+export function requestClipboardPermission() {
     navigator.permissions.query({ name: 'clipboard-write' })
         .then(permissionStatus => {
             // Check if the permission is already granted
