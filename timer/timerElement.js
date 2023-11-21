@@ -299,7 +299,7 @@ export class TimerElement {
       let options = { hour: "2-digit", minute: "2-digit" };
       let hora = new Date().toLocaleString("en-us", options);
       showNotification(this.timerName.textContent + " Done at " + hora);
-      notified = true;
+      this.notified = true;
       if (this.timer.fixed || this.timer.settings.repeat) this.refreshTimerDelayed();
     }
 
