@@ -1,4 +1,6 @@
-export const tagColorMap = loadColorMap()
+import { timersList } from "./dataManager.js";
+
+export let tagColorMap = loadColorMap()
 
 export function loadColorMap() {
   try {
@@ -13,7 +15,7 @@ export function saveColorMap() {
   localStorage.setItem('tagColorMapLastUpdate', Date.now());
 }
 
-function showColorPicker(event, tag) {
+export function showColorPicker(event, tag) {
   // Remove any existing color pickers
   const existingColorPicker = document.getElementById('colorPickerContainer');
   if (existingColorPicker) {
@@ -99,11 +101,11 @@ document.addEventListener('click', function (event) {
 });
   
 //Preparing for a setting that would allow the user to keep only used tags color in the map.
-function removeUnusedColors() {
+export function removeUnusedColors() {
   const usedColors = new Set();
 
   // Collect all colors used in the current tags
-  timers.forEach(timer => {
+  timersList.forEach(timer => {
     timer.tags.forEach(tag => {
       const tagLowerCase = tag.toLowerCase();
       if (tagColorMap[tagLowerCase]) {

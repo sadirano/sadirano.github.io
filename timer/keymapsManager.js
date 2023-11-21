@@ -1,5 +1,7 @@
+import { searchInput } from "./documentElementsManager.js";
 import * as dpm from "./dynamicParamsManager.js"
 import * as sm from "./syncManager.js"
+
 
 function focusSearchBar(event) {
     if (event.ctrlKey && event.key === 'f') {

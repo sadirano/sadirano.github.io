@@ -1,8 +1,9 @@
-import * as stm from "./settingsManager.js";
-import * as dpm from "./dynamicParamsManager.js";
-import { TimerElement } from "./timerElement.js";
 import * as data from './dataManager.js'
 import * as time from '../commons/time.js'
+import * as dpm from "./dynamicParamsManager.js";
+import { settings } from "./settingsManager.js";
+import { TimerElement } from "./timerElement.js";
+import { timerContainer } from "./documentElementsManager.js";
 
 export function displayNote(timer, divElement, settings) {
   if (settings.hideAllNotes) {
@@ -45,26 +46,25 @@ export function updateBackgroundImage(timer, divgroup) {
 }
 
 export function loadTimersView(settings) {
-  const timerList = document.getElementById('timer-list');
   let timersData = data.loadTimersData();
 
   timersData
     .sort(function (a, b) { return (a.duration - Math.floor((Date.now() - a.startTime) / 1000)) - (b.duration - Math.floor((Date.now() - b.startTime) / 1000)) })
     .forEach((timer) => {
-      const ele = new TimerElement(timer)
-      ele.init();
-      timerList.appendChild(ele.instance);
+      new TimerElement(timer, timerContainer)
     });
 }
 
 export function refreshPageIfNeeded(force = false) {
   const { isEditMode, shouldReload, lastUserInteraction } = dpm.dynamicParamsManager.getParams();
-  const { updateInterval } = stm.settings;
+  const { updateInterval } = settings;
   if (force || !isEditMode && shouldReload && lastUserInteraction > Date.now() - updateInterval) {
     location.reload();
   }
 }
 
-function delayForceReload() {
+export function delayForceReload() {
   setTimeout(refreshPageIfNeeded, 3000, true);
 }
+
+

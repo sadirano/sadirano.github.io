@@ -1,3 +1,5 @@
+import {customKeywordsMap} from "../timer/customKeywordManager.js" 
+
 export function formatTime(startTimestamp, durationInSeconds) {
   // Calculate the end timestamp
   var endTimestamp = startTimestamp + (durationInSeconds * 1000);

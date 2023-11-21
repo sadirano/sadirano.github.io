@@ -1,5 +1,9 @@
-export function generateRandomId() {
-    return Math.random().toString(36).substring(2, 11);
+export function generateRandomId(existingIds) {
+    let newId;
+    do {
+        newId = Math.random().toString(36).substring(2, 11);
+    } while (existingIds.includes(newId));
+    return newId;
 }
 
 export async function checkNotificationPermission() {

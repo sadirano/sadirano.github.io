@@ -1,9 +1,10 @@
+import { searchInput } from "./documentElementsManager.js";
+import { getDuration } from "../commons/time.js";
+import { timersList } from "./dataManager.js";
+import { executeCommand } from "./autoCompleteManager.js";
+import { settings } from "./settingsManager.js";
 
-// searchInput.value = searchInputValue;
-// applySearch(filterTag);
-//Create a function that can be called by the main.js on init.
-
-function toggleAdvancedSearch() {
+export function toggleAdvancedSearch() {
   const advancedSearchOptions = document.getElementById('advanced-search-options');
   advancedSearchOptions.style.display = advancedSearchOptions.style.display === 'none' ? 'flex' : 'none';
 }
@@ -18,41 +19,39 @@ export function applySearchWithDelay() {
 }
 
 // Load filters and search parameters from localStorage
-let filterTag = localStorage.getItem('filterTag') || '';
-let searchInputValue = localStorage.getItem('searchInputValue') || '';
+export let filterTag = localStorage.getItem('filterTag') || '';
+export let searchInputValue = localStorage.getItem('searchInputValue') || '';
 
-function applySearch(clickedTag) {
+export function applySearch(clickedTag) {
   filterTag == clickedTag ? "" : clickedTag;
   applySearchInternal(searchInput.value.toLowerCase(), filterTag);
 }
 
-let intervalReaplySearch;
+let intervalReapplySearch;
 
 function applySearchInternal(searchInputValue, filterTag) {
 
+  if (searchInputValue.startsWith('/')) {
+    executeCommand(searchInput.value);
+    return;
+  }
   // Save filters and search parameters to localStorage
   localStorage.setItem('filterTag', filterTag);
   localStorage.setItem('searchInputValue', searchInputValue);
-
-  if (searchInputValue.startsWith('/')) {
-    executeCommand(searchInput.value);
-    return
-  }
-
 
   const timerElements = document.getElementsByClassName('timer');
   const minRemaining = getDuration(document.getElementById('min-remaining').value);
   const maxRemaining = getDuration(document.getElementById('max-remaining').value);
 
   if ((minRemaining || maxRemaining)) {
-    clearInterval(intervalReaplySearch);
-    intervalReaplySearch = setInterval(applySearchInternal, stm.settings.updateInterval, searchInputValue, filterTag);
+    clearInterval(intervalReapplySearch);
+    intervalReapplySearch = setInterval(applySearchInternal, settings.updateInterval, searchInputValue, filterTag);
   } else {
-    clearInterval(intervalReaplySearch);
+    clearInterval(intervalReapplySearch);
   }
 
   Array.from(timerElements).forEach(timerElement => {
-    const timer = timers.find(timer => timer.timerId === timerElement.dataset.timerId);
+    const timer = timersList.find(timer => timer.timerId === timerElement.dataset.timerId);
     const tags_text = timer.tags === undefined ? '' : timer.tags.join(' ');
     const timerText = `${timer.name} ${timer.note} ${timer.input} ${tags_text}`.toLowerCase();
 

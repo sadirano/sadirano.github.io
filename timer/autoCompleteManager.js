@@ -1,17 +1,23 @@
+import { searchInput } from "./documentElementsManager.js";
+import { delayForceReload } from "./viewManager.js";
+import { saveSettings, settings } from "./settingsManager.js";
+import { showNotification, uncapitalizeFirstLetter } from "../commons/utils.js";
+import { removeUnusedColors } from "./tagColorManager.js";
+
 function clearSearchInput(force) {
-  if (force || stm.settings.clearSearchInput) {
+  if (force || settings.clearSearchInput) {
     searchInput.value = '';
   }
 }
 
 function showResult(result) {
-  if (stm.settings.resultToSearchInput) {
+  if (settings.resultToSearchInput) {
     searchInput.value = result;
   }
 }
 
 function showNotificationCommand(msg) {
-  if (stm.settings.showNotificationCommand) {
+  if (settings.showNotificationCommand) {
     showNotification(msg)
   }
 }
@@ -20,8 +26,8 @@ function showNotificationCommand(msg) {
 function toggleSetting(command, setting, toggleMessage, toggleFunction) {
   if (command.includes(`/toggle${setting}`)) {
     setting = uncapitalizeFirstLetter(setting);
-    stm.settings[setting] = !stm.settings[setting];
-    stm.saveSettings();
+    settings[setting] = !settings[setting];
+    saveSettings();
     clearSearchInput();
     showResult(toggleMessage);
     if (toggleFunction) {
@@ -30,7 +36,7 @@ function toggleSetting(command, setting, toggleMessage, toggleFunction) {
   }
 }
 
-function executeCommand(command) {
+export function executeCommand(command) {
 
   toggleSetting(command, 'ShowTimerButtons', '', delayForceReload);
   toggleSetting(command, 'ShowBottomMenu', '', delayForceReload);
@@ -72,9 +78,11 @@ function executeCommand(command) {
 
     clearSearchInput();
 
-    refreshTimer()
+    // refreshTimer()
 
-    showNotificationCommand("Timer refreshed by Command Line");
+    showNotificationCommand("Not working for now.");
+
+    // showNotificationCommand("Timer refreshed by Command Line");
     return;
   }
 
@@ -116,9 +124,9 @@ function executeCommand(command) {
   }
 
   if (command.includes('/sadirano-configs')) {
-    stm.settings.showNotificationCommand = true;
-    stm.settings.resultToSearchInput = true;
-    stm.settings.clearSearchInput = true;
+    settings.showNotificationCommand = true;
+    settings.resultToSearchInput = true;
+    settings.clearSearchInput = true;
     clearSearchInput();
     showNotificationCommand("Sadirano's Profile Loaded!");
   }

@@ -1,17 +1,20 @@
+import { timersList } from "./dataManager.js";
+import { settings } from "./settingsManager.js";
+import { tagColorMap } from "./tagColorManager.js";
 
 // Function to backup timers to clipboard
 export async function backupToClipboard(event) {
-  if (event === undefined || (event.ctrlKey && event.key === 'e')) {
+  if (event.type === 'click' || (event.ctrlKey && event.key === 'e')) {
     try {
 
       let backup = {
-        timers: timers,
+        timers: timersList,
         tagColorMap: {
           data: tagColorMap,
           lastUpdate: localStorage.getItem('tagColorMapLastUpdate'),
         },
         settings: {
-          data: stm.settings,
+          data: settings,
           lastUpdate: localStorage.getItem('settingsLastUpdate'),
         }
       };
@@ -45,7 +48,7 @@ export async function backupToClipboard(event) {
 
 // Function to load backup from clipboard
 export async function loadBackupFromClipboard(event) {
-  if (event === undefined || (event.ctrlKey && event.key === 'q')) {
+  if (event.type === 'click' || (event.ctrlKey && event.key === 'q')) {
     try {
       let backup;
       const api = localStorage.getItem('api');
@@ -75,7 +78,7 @@ function processTimers(backup) {
   // Compare and update each timer based on startTime
   if (backup.timers && Array.isArray(backup.timers)) {
     backup.timers.forEach((backupTimer) => {
-      const existingTimer = timers.find((timer) => timer.timerId === backupTimer.timerId);
+      const existingTimer = timersList.find((timer) => timer.timerId === backupTimer.timerId);
 
       if (existingTimer) {
         // Compare and update based on startTime
@@ -84,25 +87,25 @@ function processTimers(backup) {
         }
       } else {
         // If timer doesn't exist, add it to the timers array
-        timers.push(backupTimer);
+        timersList.push(backupTimer);
       }
     });
 
     // Update localStorage with the modified timers array
-    localStorage.setItem('timers', JSON.stringify(timers));
+    localStorage.setItem('timers', JSON.stringify(timersList));
   }
 }
 
 function processBackup(backup) {
-  // Check and update tagColorMap and stm.settings based on lastUpdate
+  // Check and update tagColorMap and settings based on lastUpdate
   if (backup.tagColorMap && backup.tagColorMap.lastUpdate && backup.tagColorMap.lastUpdate > localStorage.getItem('tagColorMapLastUpdate')) {
     localStorage.setItem('tagColorMap', JSON.stringify(backup.tagColorMap));
     localStorage.setItem('tagColorMapLastUpdate', backup.tagColorMap.lastUpdate);
   }
 
-  if (backup.stm.settings && backup.stm.settings.lastUpdate && backup.stm.settings.lastUpdate > localStorage.getItem('settingsLastUpdate')) {
-    localStorage.setItem('settings', JSON.stringify(backup.stm.settings));
-    localStorage.setItem('settingsLastUpdate', backup.stm.settings.lastUpdate);
+  if (backup.settings && backup.settings.lastUpdate && backup.settings.lastUpdate > localStorage.getItem('settingsLastUpdate')) {
+    localStorage.setItem('settings', JSON.stringify(backup.settings));
+    localStorage.setItem('settingsLastUpdate', backup.settings.lastUpdate);
   }
 }
 

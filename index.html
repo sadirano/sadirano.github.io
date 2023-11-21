@@ -23,22 +23,21 @@
     </div>
 
     <div id="search-container">
-        <input type="text" id="search-input" placeholder="Search..." oninput="sbm.applySearchWithDelay()">
-        <span class="material-symbols-outlined" onclick="sbm.toggleAdvancedSearch()">tune</span>
+        <input type="text" id="search-input" placeholder="Search...">
+        <span class="material-symbols-outlined" id="toggleAdvancedSearch">tune</span>
     </div>
     <div id="advanced-search-container">
         <div id="advanced-search-options" style="display: none;">
-            <input id="min-remaining" class="sad-input" min="0" placeholder="Min Time" oninput="sbm.applySearchWithDelay()">
-            <input id="max-remaining" class="sad-input" min="0" placeholder="Max Time" oninput="sbm.applySearchWithDelay()">
+            <input id="min-remaining" class="sad-input" min="0" placeholder="Min Time">
+            <input id="max-remaining" class="sad-input" min="0" placeholder="Max Time">
         </div>
     </div>
     <div class="timer-container" id="timer-list"> </div>
 
     <div class="floating-button" id="bottom-bar">
-        <span class="material-symbols-outlined" onclick="newTimer()">timer</span>
-        <span class="material-symbols-outlined">settings</span>
-        <span class="material-symbols-outlined" onclick="backupToClipboard()">cloud_download</span>
-        <span class="material-symbols-outlined" onclick="loadBackupFromClipboard()">cloud_upload</span>
+        <span class="material-symbols-outlined" id="loadBackupFromClipboard">cloud_upload</span>
+        <span class="material-symbols-outlined" id="backupToClipboard">cloud_download</span>
+        <span class="material-symbols-outlined" id="newTimer">timer</span>
     </div>
 </body>
 

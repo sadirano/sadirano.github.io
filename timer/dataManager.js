@@ -1,5 +1,7 @@
-import {TimerElement} from "./timerElement.js";
-import * as time from "../commons/time.js";
+import { TimerElement } from "./timerElement.js";
+import { timerContainer } from "./documentElementsManager.js";
+import { getDuration } from "../commons/time.js";
+import { generateRandomId } from "../commons/utils.js";
 
 class Timer {
     constructor(timer) {
@@ -14,17 +16,24 @@ class Timer {
         this.settings = timer.settings || defaultTimerSettings;
     }
 
-    hasTag() {
+    hasTag = () => {
         return this.tags !== undefined && this.tags.length !== 0;
     }
     remainingTime() {
-        // console.log(`${this.duration} - ${this.startTime}`);
         return this.duration - Math.floor((Date.now() - this.startTime) / 1000);
     }
 }
-export function saveTimersData() {
-    localStorage.setItem(`timers`, JSON.stringify(timersList));
+export function saveTimersData(updatedTimer, remove) {
+    if (!updatedTimer) return;
+
+    const index = timersList.findIndex(timer => timer.timerId === updatedTimer.timerId);
+    if(!remove) {
+        index !== -1 ? (timersList[index] = updatedTimer) : timersList.push(updatedTimer);
+    }
+
+    localStorage.setItem('timers', JSON.stringify(timersList));
 }
+
 export function loadTimersData() {
     try {
         let jsonList = JSON.parse(localStorage.getItem(`timers`),) || [];
@@ -39,10 +48,12 @@ export function loadTimersData() {
 export function newTimer() {
     const timerName = "Timer";
     const durationInput = 60;
-    let duration = time.getDuration(durationInput);
+    let duration = getDuration(durationInput);
     const startTime = Date.now();
+    const ids = timersList.map(timer => timer.timerId);
+
     let timer = {
-        timerId: generateRandomId(),
+        timerId: generateRandomId(ids),
         name: timerName,
         duration: duration,
         startTime: startTime,
@@ -51,10 +62,10 @@ export function newTimer() {
         tags: [],
         settings: defaultTimerSettings
     };
-    const timerElement = new TimerElement(timer);
+    const timerElement = new TimerElement(new Timer(timer));
     timersList.push(timer);
-    saveTimersData();
-    document.getElementById('timer-list').appendChild(timerElement);
+    saveTimersData(timer);
+    timerContainer.appendChild(timerElement);
     timerElement.focus();
     timerElement.click();
 }
@@ -68,7 +79,7 @@ const defaultTimerSettings = {
     ]
 };
 
-function getAllTags() {
+export function getAllTags() {
     const allTags = new Set();
     timersList.forEach(timer => {
         timer.tags.forEach(tag => {
