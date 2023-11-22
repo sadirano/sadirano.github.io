@@ -46,12 +46,12 @@ export function init() {
             switch (key) {
                 case 'ArrowDown':
                     //Last row
-                    if (currentIndex >= focusableElements.length - numberOfElementsInLine) {
+                    if (currentIndex >= focusableElements.length  - (focusableElements.length % numberOfElementsInLine)) {
                         nextIndex = previousColumn;
                     } else {
                         nextIndex = (currentIndex + numberOfElementsInLine);
                         //Selecting the last row item
-                        if (nextIndex > focusableElements.length) {
+                        if (nextIndex >= focusableElements.length) {
                             nextIndex = focusableElements.length - 1;
                         }
                     }
@@ -92,9 +92,9 @@ export function init() {
             }
 
             // Check if the focused element exists
-            if (focusedElement) {
+            if (document.activeElement) {
                 // Scroll the focused element into view, centering it in the viewport
-                focusedElement.scrollIntoView({
+                document.activeElement.scrollIntoView({
                     behavior: 'smooth',
                     block: 'center',
                     inline: 'center',
@@ -115,6 +115,23 @@ export function init() {
 
 }
 
+export function focusNearestElement(element) {
+    // Find all focusable elements on the page
+    const focusableElements = Array.from(document.querySelectorAll('[tabindex]'))
+        .filter(element => !(element.hasAttribute('disabled') || element.style.display === 'none'));
+
+    // Find the index of the currently focused element in the array
+    const currentIndex = focusableElements.indexOf(element);
+
+    let nextIndex = currentIndex + 1;
+    if (focusableElements[nextIndex] !== undefined) {
+        focusableElements[nextIndex].focus();
+    } else {
+        focusableElements[0].focus();
+    }
+
+}
+
 
 export function selectLastFocusedTimerElement() {
     if (lastFocusedTimerElement !== undefined) lastFocusedTimerElement.focus();
@@ -132,3 +149,4 @@ function _calculateNumberOfElementsInLine(container, currentElement) {
 
     return numberOfElementsInLine;
 }
+

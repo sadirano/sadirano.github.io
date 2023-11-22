@@ -87,6 +87,30 @@ export function hourStringToSeconds(timeString) {
   return Math.round(timeDifference);
 }
 
+export function dateTimeStringToSeconds(dateTimeString) {
+  const [datePart, timePart] = dateTimeString.split(' ');
+  const [day, month] = datePart.split('/').map(Number);
+  const [hours, minutes] = timePart.split(':').map(Number);
+
+  if (
+    isNaN(day) || isNaN(month) || day < 1 || day > 31 ||
+    isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59
+  ) {
+    throw new Error("Invalid date or time format. Please use the format 'DD/MM HH:mm'.");
+  }
+
+  const now = new Date();
+  const targetTime = new Date(now.getFullYear(), month - 1, day, hours, minutes, 0);
+
+  // Check if the target time is earlier than the current time (next day)
+  if (targetTime < now) {
+    targetTime.setDate(targetTime.getDate() + 1);
+  }
+
+  const timeDifference = (targetTime - now) / 1000; // Convert milliseconds to seconds
+  return Math.round(timeDifference);
+}
+
 export function textSecondsRemaining(condition) {
   var now = new Date();
 
@@ -119,13 +143,25 @@ export function textSecondsRemaining(condition) {
 }
 
 export function getDuration(timerDurationInput) {
+  let strInput = timerDurationInput+"";
+  if (strInput.includes(',')) {
+    const possibilities = strInput.split(',')
+      .map(duration => parseFloat(getDurationInternal(duration)))
+      .filter(value => !isNaN(value) && value > 0);
+
+    if (possibilities.length > 0) {
+      return Math.min(...possibilities);
+    }
+  }
+
   try {
     // Try to evaluate the expression directly using eval
     const evaluatedValue = eval(getDurationInternal(timerDurationInput));
-    if (!isNaN(evaluatedValue)) {
+    if (!isNaN(evaluatedValue) && evaluatedValue > 0) {
       return evaluatedValue;
     }
   } catch (error) { }
+
   return timerDurationInput;
 }
 
@@ -146,6 +182,11 @@ export function getDurationInternal(timerDurationInput) {
     if (!isNaN(evaluatedValue)) {
       return evaluatedValue;
     }
+  } catch (error) { }
+
+  try {
+    // Try to convert time string to seconds
+    return dateTimeStringToSeconds(timerDurationInput);
   } catch (error) { }
 
   try {

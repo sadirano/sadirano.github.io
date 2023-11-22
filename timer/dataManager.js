@@ -27,7 +27,7 @@ export function saveTimersData(updatedTimer, remove) {
     if (!updatedTimer) return;
 
     const index = timersList.findIndex(timer => timer.timerId === updatedTimer.timerId);
-    if(!remove) {
+    if (!remove) {
         index !== -1 ? (timersList[index] = updatedTimer) : timersList.push(updatedTimer);
     }
 
@@ -47,7 +47,7 @@ export function loadTimersData() {
 
 export function newTimer() {
     const timerName = "Timer";
-    const durationInput = 60;
+    const durationInput = 3600;
     let duration = getDuration(durationInput);
     const startTime = Date.now();
     const ids = timersList.map(timer => timer.timerId);
@@ -65,9 +65,10 @@ export function newTimer() {
     const timerElement = new TimerElement(new Timer(timer));
     timersList.push(timer);
     saveTimersData(timer);
-    timerContainer.appendChild(timerElement);
-    timerElement.focus();
-    timerElement.click();
+    timerContainer.appendChild(timerElement.instance);
+    timerElement.instance.focus();
+    rightClick(timerElement.instance);
+
 }
 
 const defaultTimerSettings = {
@@ -92,3 +93,14 @@ export function getAllTags() {
 
 
 export const timersList = loadTimersData() || [];
+
+
+// Simulate a right-click event
+function rightClick(element) {
+    const rightClickEvent = new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        button: 2, // 2 represents the right mouse button
+    });
+    element.dispatchEvent(rightClickEvent);
+}

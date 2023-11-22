@@ -1,6 +1,6 @@
-import { prompt, timerContainer } from "./documentElementsManager.js";
+import { prompt, promptCancel, promptConfirm, timerContainer } from "./documentElementsManager.js";
 import { dynamicParamsManager } from "./dynamicParamsManager.js";
-import { selectLastFocusedTimerElement } from "./navigationManager.js";
+import { focusNearestElement, selectLastFocusedTimerElement } from "./navigationManager.js";
 import { settings } from "./settingsManager.js";
 import { getDuration } from "../commons/time.js";
 import { getAllTags, timersList } from "./dataManager.js";
@@ -78,7 +78,7 @@ export class TimerElement {
   }
 
   _addTagsToDisplay() {
-    this.timer.tags.forEach( (tag) =>  {
+    this.timer.tags.forEach((tag) => {
       const tagElement = document.createElement('span');
       tagElement.className = 'tag';
       tagElement.textContent = tag.substring(1);
@@ -117,8 +117,10 @@ export class TimerElement {
     this.refreshButton = document.createElement('span');
     this.refreshButton.className = 'material-symbols-outlined refresh-button';
     this.refreshButton.innerHTML = 'replay';
+    this.refreshButton.translate = 'no';
 
     this.deleteButton = document.createElement('span');
+    this.deleteButton.translate = 'no';
     this.deleteButton.className = 'material-symbols-outlined delete-button';
     this.deleteButton.innerHTML = 'delete';
 
@@ -166,7 +168,15 @@ export class TimerElement {
     this.remainingTime_ms = this.timer.duration - Date.now() - this.timer.startTime; //Change to a method
     this.notified = false;
 
-    this.instance.addEventListener('click', (event) => this.openPromptHandler(event));
+    this.instance.oncontextmenu = (event) => {
+      event.preventDefault();
+      this.openPromptHandler(event);
+    }
+
+    this.instance.addEventListener('click', (event) => {
+      event.preventDefault();
+      this.instance.focus();
+    });
 
     this.instance.addEventListener('keypress', (event) => this.keyPressHandler(event));
 
@@ -220,6 +230,8 @@ export class TimerElement {
   clearListeners = () => {
     // Clear previous event listeners
     prompt.removeEventListener('keydown', this.handlePromptKeydown);
+    promptConfirm.removeEventListener('click', this.handlePromptKeydown);
+    promptCancel.removeEventListener('click', (event) => this.cancelPrompt(event));
     prompt.removeEventListener('blur', this.cancelPrompt);
     document.removeEventListener('keydown', this.cancelPrompt);
   }
@@ -261,7 +273,7 @@ export class TimerElement {
       if (this.timer.note !== undefined && this.timer.note !== "undefined") {
         note = this.timer.note;
       }
-      this.openPrompt(this.timer.input + '\n' + this.timer.name + '\n' + note);
+      this.openPrompt(this.timer.input + '\n' + this.timer.name + '\n' + note.trim() + '\n');
     }
   }
 
@@ -281,6 +293,7 @@ export class TimerElement {
   }
 
   deleteTimer() {
+    focusNearestElement(this.instance);
     document.getElementById('timer-list').removeChild(this.instance);
     let timerIndex = timersList.findIndex(t => t.timerId === this.timer.timerId);
     if (timerIndex - 1) {
@@ -341,26 +354,31 @@ export class TimerElement {
 
     prompt.rows = 10; // Set the number of rows as needed
     prompt.addEventListener('keydown', this.handlePromptKeydown);
+    promptConfirm.addEventListener('click', () => this.submitPrompt());
+
     // Add new event listeners
     // prompt.addEventListener("blur", cancelPrompt);
     document.addEventListener('keydown', (event) => this.cancelPrompt(event));
+    promptCancel.addEventListener('click', (event) => this.cancelPrompt(event));
 
     customPrompt.appendChild(prompt);
     prompt.focus();
   }
 
   handlePromptKeydown = (event) => {
-    if (event.ctrlKey && event.key === 'Enter') {
-      this.submitPrompt();
-    }
-    if (event.key === 'Tab') {
+    if (
+      event.type === 'click' ||
+      (event.ctrlKey && event.key === 'Enter') ||
+      event.key === 'Tab'
+    ) {
       event.preventDefault();
-      this.submitPrompt(this.timer);
+      event.stopPropagation();
+      this.submitPrompt();
     }
   }
 
   // Updated submitPrompt function to handle notes changes save Edited Timer
-  submitPrompt = (timer) => {
+  submitPrompt = (event) => {
     const inputValue = prompt.value;
 
     // Split the input into lines
@@ -371,7 +389,7 @@ export class TimerElement {
     let newDuration = getDuration(durationInput);
 
     //Handle new duration.
-    if (!isNaN(newDuration) && newDuration > 0 && newDuration != this.timer.duration) {
+    if (!isNaN(newDuration) && newDuration != this.timer.duration) {
       this.timer.startTime = Date.now();
       this.timer.duration = newDuration;
       this.timer.input = durationInput;
@@ -407,21 +425,20 @@ export class TimerElement {
     saveTimersData(this.timer);
 
     customPrompt.style.display = 'none';
-    dynamicParamsManager.updateParams({ isEditMode: false })
 
     this.clearListeners();
-    prompt.removeEventListener('keydown', this.handlePromptKeydown);
 
-    selectLastFocusedTimerElement();
+    this.instance.focus();
+    dynamicParamsManager.updateParams({ isEditMode: false })
   }
-  
+
 
   cancelPrompt = (event) => {
-    if (event.key === 'Escape' || event.type === 'blur') {
-      dynamicParamsManager.updateParams({ isEditMode: false });
+    if (event.type === 'click' || event.key === 'Escape' || event.type === 'blur') {
       customPrompt.style.display = 'none';
       this.clearListeners();
       selectLastFocusedTimerElement();
+      dynamicParamsManager.updateParams({ isEditMode: false });
     }
   }
 

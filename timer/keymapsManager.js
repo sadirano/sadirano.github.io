@@ -1,18 +1,27 @@
-import { searchInput } from "./documentElementsManager.js";
+import { newTimer } from "./dataManager.js";
+import { searchInput, searchContainer } from "./documentElementsManager.js";
 import * as dpm from "./dynamicParamsManager.js"
 import * as sm from "./syncManager.js"
 
 
+
+
 function focusSearchBar(event) {
-    if (event.ctrlKey && event.key === 'f') {
+    focus = (event) => {
         event.preventDefault();
+        searchContainer.style.display = 'flex';
         searchInput.focus();
+        
+    }
+    if (event.ctrlKey && event.key === 'f') {
+        focus(event);
         searchInput.select();
     }
     if (event.ctrlKey && event.key === '/') {
-        searchInput.focus();
+        focus(event);
         searchInput.value = '/';
     }
+
 
 }
 function createNewTimerEvent(event) {

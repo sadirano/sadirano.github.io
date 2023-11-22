@@ -18,7 +18,7 @@ function init() {
   view.loadTimersView(settings);
   acm.bindAutoCompleteCommands(searchInput);
   if (settings.showBottomMenu) {
-    bottomBar.style.display = 'none'
+    bottomBar.style.display = 'flex'
   }
   searchInput.value = searchInputValue;
   applySearch(filterTag);
