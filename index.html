@@ -14,7 +14,7 @@
 
 <body>
 
-    <div id="customPrompt" style="display: none;">
+    <div id="customPrompt">
         <textarea type="text" id="my-prompt" placeholder="Input...\nName...\nNotes...">
         </textarea>
         <div id="promptContent">
@@ -23,19 +23,17 @@
         </div>
     </div>
 
-    <div id="search-container" style="display: none;">
+    <div id="search-container" class="hidden-on-desktop">
         <input type="text" id="search-input" placeholder="Search...">
         <span class="material-symbols-outlined" translate="no" id="toggleAdvancedSearch">tune</span>
     </div>
-    <div id="advanced-search-container">
-        <div id="advanced-search-options" style="display: none;">
-            <input id="min-remaining" class="sad-input" min="0" placeholder="Min Time">
-            <input id="max-remaining" class="sad-input" min="0" placeholder="Max Time">
-        </div>
+    <div id="advanced-search-options" style="display: none;">
+        <input id="min-remaining" class="sad-input" min="0" placeholder="Min Time">
+        <input id="max-remaining" class="sad-input" min="0" placeholder="Max Time">
     </div>
     <div class="timer-container" id="timer-list"> </div>
 
-    <div class="floating-button" id="bottom-bar" style="display: none;">
+    <div class="floating-button" id="bottom-bar" class="hidden-on-desktop">
         <span class="material-symbols-outlined" translate="no" id="loadBackupFromClipboard">cloud_upload</span>
         <span class="material-symbols-outlined" translate="no" id="backupToClipboard">cloud_download</span>
         <span class="material-symbols-outlined" translate="no" id="newTimer">timer</span>

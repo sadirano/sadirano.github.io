@@ -115,6 +115,7 @@ input {
 }
 
 #customPrompt {
+    display: none;
     position: fixed;
     flex-direction: column-reverse;
     width: 100%;
@@ -140,6 +141,7 @@ input {
 }
 
 .floating-button {
+    display: none;
     width: 100%;
     padding: 1%;
     background-color: #494949;
@@ -246,7 +248,9 @@ input {
     width: 100%;
 }
 
-
+.hidden-on-desktop {
+    display: none;
+}
 
 
 #advanced-search-container {
@@ -254,12 +258,10 @@ input {
     top: 5%;
     left: 0;
     text-align: center;
-    display: flex;
     justify-content: center;
 }
 
 #advanced-search-options {
-    display: flex;
     justify-content: center;
     width: 100%;
 }
@@ -356,9 +358,18 @@ input {
     user-select: none;
 }
 
+#search-container {
+    display: none;
+}
+
+
+
 @media screen and (max-width: 600px) {
     .timer {
         width: 50%;
+    }
+    #search-container {
+        display: flex;
     }
 }
 

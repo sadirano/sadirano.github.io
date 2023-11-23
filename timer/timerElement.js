@@ -354,7 +354,7 @@ export class TimerElement {
 
     prompt.rows = 10; // Set the number of rows as needed
     prompt.addEventListener('keydown', this.handlePromptKeydown);
-    promptConfirm.addEventListener('click', () => this.submitPrompt());
+    promptConfirm.addEventListener('click', this.handlePromptKeydown);
 
     // Add new event listeners
     // prompt.addEventListener("blur", cancelPrompt);
