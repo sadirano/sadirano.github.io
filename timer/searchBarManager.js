@@ -23,7 +23,7 @@ export let filterTag = localStorage.getItem('filterTag') || '';
 export let searchInputValue = localStorage.getItem('searchInputValue') || '';
 
 export function applySearch(clickedTag) {
-  filterTag == clickedTag ? "" : clickedTag;
+  filterTag = filterTag == clickedTag ? "" : clickedTag;
   applySearchInternal(searchInput.value.toLowerCase(), filterTag);
 }
 

@@ -363,11 +363,11 @@ input {
 }
 
 
-
 @media screen and (max-width: 600px) {
     .timer {
-        width: 50%;
+        width: 100%;
     }
+    #bottom-bar,
     #search-container {
         display: flex;
     }

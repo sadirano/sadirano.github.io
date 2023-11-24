@@ -1,5 +1,5 @@
 import { prompt, promptCancel, promptConfirm, timerContainer } from "./documentElementsManager.js";
-import { dynamicParamsManager } from "./dynamicParamsManager.js";
+import { dynamicParamsManager, updateUnreadTitle } from "./dynamicParamsManager.js";
 import { focusNearestElement, selectLastFocusedTimerElement } from "./navigationManager.js";
 import { settings } from "./settingsManager.js";
 import { getDuration } from "../commons/time.js";
@@ -10,7 +10,7 @@ import * as time from "../commons/time.js";
 import { saveTimersData } from "./dataManager.js"
 import { showNotification } from "../commons/utils.js";
 import { applySearch } from "./searchBarManager.js";
-
+import { startAlarm } from "./alarmManager.js";
 
 let tribute;
 
@@ -312,7 +312,10 @@ export class TimerElement {
       let options = { hour: "2-digit", minute: "2-digit" };
       let hora = new Date().toLocaleString("en-us", options);
       showNotification(this.timerName.textContent + " Done at " + hora);
+      startAlarm();
       this.notified = true;
+      dynamicParamsManager.updateParams({ unread: ++dynamicParamsManager.getParams().unread });
+      updateUnreadTitle();
       if (this.timer.fixed || this.timer.settings.repeat) this.refreshTimerDelayed();
     }
 

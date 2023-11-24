@@ -13,12 +13,13 @@ const defaultSettings = {
     showInputOnNotes: true,
     allowForcedReloadOnRefresh: true,
     autoRepeatFixedTimers: true,
+    enableAlarms : false,
+    alarmSound: 1,
 };
 
 function loadSettings() {
     try {
         const storedSettings = JSON.parse(localStorage.getItem('settings')) || {};
-
         // Merge the stored settings with default settings
         return { ...defaultSettings, ...storedSettings };
     } catch (error) {

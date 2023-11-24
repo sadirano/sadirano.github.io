@@ -1,17 +1,25 @@
+import { clearAlarm } from "./alarmManager.js";
 import { newTimer } from "./dataManager.js";
 import { searchInput, searchContainer } from "./documentElementsManager.js";
 import * as dpm from "./dynamicParamsManager.js"
 import * as sm from "./syncManager.js"
 
+function isKeyShortcut(event, key) {
+    return !dpm.dynamicParamsManager.getParams.isEditMode && event.key === key
+}
 
+function handleKeyShortcut(event, key, actionFunction) {
+    if (isKeyShortcut(event, key)) {
+        event.preventDefault();
+        actionFunction();
+    }
+}
 
-
-function focusSearchBar(event) {
+function searchBarHandler(event) {
     focus = (event) => {
         event.preventDefault();
         searchContainer.style.display = 'flex';
         searchInput.focus();
-        
     }
     if (event.ctrlKey && event.key === 'f') {
         focus(event);
@@ -21,10 +29,9 @@ function focusSearchBar(event) {
         focus(event);
         searchInput.value = '/';
     }
-
-
 }
-function createNewTimerEvent(event) {
+
+function createNewTimerHandler(event) {
     // Get the currently focused element
     const focusedElement = document.activeElement;
     if (focusedElement.tagName === 'INPUT') return;
@@ -35,7 +42,6 @@ function createNewTimerEvent(event) {
     }
 }
 
-
 function toggleAdvancedSearchHandler(event) {
     if (event.ctrlKey && event.key === "ArrowDown") {
         const advancedSearchOptions = document.getElementById('advanced-search-options');
@@ -43,15 +49,21 @@ function toggleAdvancedSearchHandler(event) {
     }
 }
 
-export function init() {
-    document.addEventListener('keydown', sm.backupToClipboard);
-    document.addEventListener('keydown', sm.loadBackupFromClipboard);
-    document.addEventListener('keydown', createNewTimerEvent);
-    document.addEventListener('keydown', focusSearchBar);
-    document.addEventListener('keydown', toggleAdvancedSearchHandler);
-    document.addEventListener('keydown', function (event) {
-        if (event.ctrlKey && event.key === " ") {
-            event.preventDefault();
-        }
-    });
+function newShortcut(cmd) {
+    document.addEventListener('keydown', cmd);
 }
+
+function newShortKey(key, cmd) {
+    newShortcut((event) => handleKeyShortcut(event,key,cmd));
+}
+
+export function init() {
+    newShortcut(sm.backupToClipboard)
+    newShortcut(sm.loadBackupFromClipboard)
+    newShortcut(createNewTimerHandler);
+    newShortcut(searchBarHandler);
+    newShortcut(toggleAdvancedSearchHandler);
+    newShortKey('p', clearAlarm);
+    newShortKey('r', dpm.clearUnread);
+}
+

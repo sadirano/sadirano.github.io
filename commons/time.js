@@ -112,16 +112,15 @@ export function dateTimeStringToSeconds(dateTimeString) {
 }
 
 export function textSecondsRemaining(condition) {
-  var now = new Date();
-
-  var targetHour;
+  const now = new Date();
+  let targetHour;
 
   switch (condition) {
     case "odd":
-      targetHour = Math.floor(now.getHours() / 2) * 2 + 1; // Next odd hour
+      targetHour = now.getHours() % 2 === 0 ? now.getHours() + 1 : now.getHours() + 2; // Next odd hour
       break;
     case "even":
-      targetHour = Math.floor(now.getHours() / 2) * 2 + 2; // Next even hour
+      targetHour = now.getHours() % 2 === 0 ? now.getHours() + 2 : now.getHours() + 1; // Next even hour
       break;
     case "next":
       targetHour = now.getHours() + 1; // Next hour
@@ -130,16 +129,13 @@ export function textSecondsRemaining(condition) {
       throw new Error("Invalid condition. Please use 'odd', 'even', or 'next'.");
   }
 
-  // Set the target time with the calculated hour and reset minutes and seconds
-  var targetTime = new Date(now);
-  targetTime.setHours(targetHour);
-  targetTime.setMinutes(0);
-  targetTime.setSeconds(0);
+  // Set the target time with the calculated hour
+  const targetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), targetHour, 0, 0);
 
-  // Calculate the time difference in seconds
-  var timeDiff = (targetTime.getTime() - now.getTime()) / 1000;
+  // Calculate the difference in seconds
+  const timeDifference = (targetTime - now) / 1000; // Convert milliseconds to seconds
 
-  return timeDiff;
+  return Math.round(timeDifference);
 }
 
 export function getDuration(timerDurationInput) {
