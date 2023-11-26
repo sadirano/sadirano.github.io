@@ -89,12 +89,10 @@ function processBackup(backup) {
   // Check and update tagColorMap and settings based on lastUpdate
   if (backup.tagColorMap && backup.tagColorMap.lastUpdate && backup.tagColorMap.lastUpdate > localStorage.getItem('tagColorMapLastUpdate')) {
     localStorage.setItem('tagColorMap', JSON.stringify(backup.tagColorMap));
-    localStorage.setItem('tagColorMapLastUpdate', backup.tagColorMap.lastUpdate);
   }
 
   if (backup.settings && backup.settings.lastUpdate && backup.settings.lastUpdate > localStorage.getItem('settingsLastUpdate')) {
     localStorage.setItem('settings', JSON.stringify(backup.settings));
-    localStorage.setItem('settingsLastUpdate', backup.settings.lastUpdate);
   }
 }
 
