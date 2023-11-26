@@ -5,7 +5,7 @@ import { settings } from "./settingsManager.js";
 import { getDuration } from "../commons/time.js";
 import { getAllTags, timersList } from "./dataManager.js";
 import { showColorPicker, tagColorMap } from "./tagColorManager.js";
-import * as view from "./viewManager.js";
+import { delayForceReload, updateBackgroundImage } from "./viewManager.js";
 import * as time from "../commons/time.js";
 import { saveTimersData } from "./dataManager.js"
 import { showNotification } from "../commons/utils.js";
@@ -139,7 +139,7 @@ export class TimerElement {
     this.divgroup = document.createElement('div');
     this.divgroup.className = 'vert-timer';
 
-    view.updateBackgroundImage(this.timer, this.divgroup);
+    updateBackgroundImage(this.timer, this.divgroup);
 
     this.divElement = document.createElement('inputDiv');
     this.divElement.className = 'div-hint';
@@ -286,7 +286,7 @@ export class TimerElement {
     this.startTimer();
     saveTimersData(this.timer);
     if (settings.allowForcedReloadOnRefresh) {
-      this.delayForceReload();
+      delayForceReload();
     } else {
       this.displayNote();
     }
@@ -296,7 +296,7 @@ export class TimerElement {
     focusNearestElement(this.instance);
     document.getElementById('timer-list').removeChild(this.instance);
     let timerIndex = timersList.findIndex(t => t.timerId === this.timer.timerId);
-    if (timerIndex - 1) {
+    if (timerIndex - 1 >= 0) {
       timersList.splice(timerIndex, 1);
       saveTimersData(this.timer, true);
     }
@@ -395,7 +395,7 @@ export class TimerElement {
     if (!isNaN(newDuration) && newDuration != this.timer.duration) {
       this.timer.startTime = Date.now();
       this.timer.duration = newDuration;
-      this.timer.input = durationInput;
+      this.timer.input = durationInput.startsWith('!,') ? removeFirstTimer(durationInput) : durationInput;
       this.timer.fixed = this.timer.input.includes(':');
       const validInputs = ['odd', 'even', 'next'];
       this.timer.settings.repeat = validInputs.includes(this.timer.input.toLowerCase()) || (this.timer.fixed && settings.autoRepeatFixedTimers);
@@ -584,8 +584,12 @@ function bindTribute() {
 }
 
 function extractTags(note) {
-  // Regex to find all content after hashtags in the note, allowing spaces
-  const tagRegex = /#[a-zA-Z0-9_]+( [a-zA-Z0-9_]+)*/g;
+  const tagRegex = /^#[a-zA-Z0-9_]+(?: [a-zA-Z0-9_]+)*$/gm;
   const matches = note.match(tagRegex);
-  return matches || [];
+  const trimmedTags = matches ? matches.map(tag => tag.trim()) : [];
+  return trimmedTags;
+}
+
+function removeFirstTimer(durationInput) {
+  return durationInput.substring(durationInput.indexOf(",", 2) + 1);
 }

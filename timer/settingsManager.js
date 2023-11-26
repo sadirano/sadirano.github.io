@@ -13,8 +13,11 @@ const defaultSettings = {
     showInputOnNotes: true,
     allowForcedReloadOnRefresh: true,
     autoRepeatFixedTimers: true,
-    enableAlarms : false,
-    alarmSound: 1,
+    alarm : {
+        enabled : false,
+        sound: 1,
+        volume : 0.5,
+    },
 };
 
 function loadSettings() {

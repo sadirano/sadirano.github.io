@@ -7,6 +7,7 @@ export function init() {
 
     document.addEventListener('keydown', function (event) {
         if (dynamicParamsManager.getParams().isEditMode) return;
+        if (event.ctrlKey) return;
         const movementKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'];
 
         // Check if the pressed key is an arrow key
@@ -46,7 +47,7 @@ export function init() {
             switch (key) {
                 case 'ArrowDown':
                     //Last row
-                    if (currentIndex >= focusableElements.length  - (focusableElements.length % numberOfElementsInLine)) {
+                    if (currentIndex >= focusableElements.length - 1 - (focusableElements.length % numberOfElementsInLine)) {
                         nextIndex = previousColumn;
                     } else {
                         nextIndex = (currentIndex + numberOfElementsInLine);

@@ -1,9 +1,10 @@
 import { searchInput } from "./documentElementsManager.js";
 import { delayForceReload } from "./viewManager.js";
 import { saveSettings, settings } from "./settingsManager.js";
-import { showNotification, uncapitalizeFirstLetter } from "../commons/utils.js";
+import { showNotification } from "../commons/utils.js";
 import { removeUnusedColors } from "./tagColorManager.js";
-import { changeAlarmSound } from "./alarmManager.js";
+import { changeAlarmSound, changeAlarmVolume } from "./alarmManager.js";
+import { updateCustomKeywordsMap } from "./customKeywordManager.js";
 
 function clearSearchInput(force) {
   if (force || settings.clearSearchInput) {
@@ -25,8 +26,7 @@ function showNotificationCommand(msg) {
 
 
 function toggleSetting(command, setting, toggleMessage, toggleFunction) {
-  if (command.includes(`/toggle${setting}`)) {
-    setting = uncapitalizeFirstLetter(setting);
+  if (command.includes(`/toggle=${setting}`)) {
     settings[setting] = !settings[setting];
     saveSettings();
     clearSearchInput();
@@ -39,26 +39,28 @@ function toggleSetting(command, setting, toggleMessage, toggleFunction) {
 
 export function executeCommand(command) {
 
-  toggleSetting(command, 'ShowTimerButtons', 'Show Timer Buttons', delayForceReload);
-  toggleSetting(command, 'ShowBottomMenu', 'Show Bottom Menu', delayForceReload);
-  toggleSetting(command, 'ShowNotificationCommand', 'Notifications back online!');
-  toggleSetting(command, 'ResultToSearchInput', 'Command results back to the Search bar.');
-  toggleSetting(command, 'ClearSearchInput', 'The input was cleared, believe me.');
-  toggleSetting(command, 'HideAllNotes', 'Hide All Notes', delayForceReload);
-  toggleSetting(command, 'ShowStartTimeOnNotes', 'Show Start Time on Notes', delayForceReload);
-  toggleSetting(command, 'ShowInputOnNotes', 'Show Input on Notes', delayForceReload);
-  toggleSetting(command, 'AllowForcedReloadOnRefresh', 'Allow Forced Reload on Refresh', delayForceReload);
-  toggleSetting(command, 'AutoRepeatFixedTimers', 'Auto Repeat Fixed Timers');
-  toggleSetting(command, 'EnableAlarms', 'Enable Alarms');
+  toggleSetting(command, 'showTimerButtons', 'Show Timer Buttons', delayForceReload);
+  toggleSetting(command, 'showBottomMenu', 'Show Bottom Menu', delayForceReload);
+  toggleSetting(command, 'showNotificationCommand', 'Notifications back online!');
+  toggleSetting(command, 'resultToSearchInput', 'Command results back to the Search bar.');
+  toggleSetting(command, 'clearSearchInput', 'The input was cleared, believe me.');
+  toggleSetting(command, 'hideAllNotes', 'Hide All Notes', delayForceReload);
+  toggleSetting(command, 'showStartTimeOnNotes', 'Show Start Time on Notes', delayForceReload);
+  toggleSetting(command, 'showInputOnNotes', 'Show Input on Notes', delayForceReload);
+  toggleSetting(command, 'allowForcedReloadOnRefresh', 'Allow Forced Reload on Refresh', delayForceReload);
+  toggleSetting(command, 'autoRepeatFixedTimers', 'Auto Repeat Fixed Timers');
+  toggleSetting(command, 'enable.alarms', 'Enable Alarms');
 
   if (command.includes('/toggleAds')) {
     clearSearchInput();
     showResult('Thank you for trying.');
+    return;
   }
 
   if (command.includes('/help')) {
     clearSearchInput();
     showResult('Sorry, can\'t help at the moment, please try again later.');
+    return;
   }
 
   if (command.includes('/alarmSound=')) {
@@ -69,6 +71,17 @@ export function executeCommand(command) {
     }
     return;
   }
+
+  if (command.includes('/alarmVolume=')) {
+    let volume = command.substring('/alarmVolume='.length).trim();
+    if(changeAlarmVolume(volume)) {
+      clearSearchInput();
+      showResult("New alarm volume configured " + volume);
+    }
+    return;
+  }
+
+  
 
   if (command.includes('/api=')) {
     let api = command.substring(5).trim();
@@ -112,7 +125,7 @@ export function executeCommand(command) {
     return;
   }
 
-  const keywordMatch = command.match(/\/(\S+)=.+/);
+  const keywordMatch = command.match(/\/#(\S+)=.+/);
 
   if (keywordMatch) {
     const keyword = keywordMatch[1];
@@ -124,7 +137,7 @@ export function executeCommand(command) {
     return;
   }
 
-  const keywordQuestionMatch = command.match(/\/(\S+)\?/);
+  const keywordQuestionMatch = command.match(/\/#(\S+)\?/);
 
   if (keywordQuestionMatch) {
     const keyword = keywordQuestionMatch[1];
@@ -139,12 +152,14 @@ export function executeCommand(command) {
     settings.clearSearchInput = true;
     clearSearchInput();
     showNotificationCommand("Sadirano's Profile Loaded!");
+    return;
   }
 
   if (command.includes('/cleanColorMap')) {
     removeUnusedColors();
     clearSearchInput();
     showNotificationCommand("Color map cleared.");
+    return;
   }
 }
 
@@ -177,17 +192,18 @@ const options = [
   { key: '/cleanColorMap', value: 'Remove unused color tags', },
   { key: '/help', value: 'Are you looking for help ? Me too.', },
   { key: '/sadirano-configs', value: 'Sadirano\'s Profile Config ', },
-  { key: '/toggleShowTimerButtons', value: 'Toggle Timer Buttons', },
-  { key: '/toggleShowBottomMenu', value: 'Toggle Bottom Menu Bar', },
-  { key: '/toggleShowNotificationCommand', value: 'Toggle Command Notification', },
-  { key: '/toggleResultToSearchInput', value: 'Toggle option to output the result to the Search Bar', },
-  { key: '/toggleClearSearchInput', value: 'Toggle option to Clear the Search Bar after Executing the Command', },
   { key: '/toggleAds', value: 'The Ads Opt-in option', },
-  { key: '/toggleHideAllNotes', value: 'Show/Hide all Notes', },
-  { key: '/toggleShowStartTimeOnNotes', value: 'Toggle Start Time on Notes', },
-  { key: '/toggleShowInputOnNotes', value: 'Toggle Input on Notes', },
-  { key: '/toggleAllowForcedReloadOnRefresh', value: 'Toggle Forced Reload by the App', },
-  { key: '/toggleAutoRepeatFixedTimers', value: 'Toggle Automatic Repeat for Fixed Timers', },
-  { key: '/toggleEnableAlarms', value: 'Enable Alarm Sounds', },
+  { key: '/toggle=showTimerButtons', value: 'Toggle Timer Buttons', },
+  { key: '/toggle=showBottomMenu', value: 'Toggle Bottom Menu Bar', },
+  { key: '/toggle=showNotificationCommand', value: 'Toggle Command Notification', },
+  { key: '/toggle=resultToSearchInput', value: 'Toggle option to output the result to the Search Bar', },
+  { key: '/toggle=clearSearchInput', value: 'Toggle option to Clear the Search Bar after Executing the Command', },
+  { key: '/toggle=hideAllNotes', value: 'Show/Hide all Notes', },
+  { key: '/toggle=showStartTimeOnNotes', value: 'Toggle Start Time on Notes', },
+  { key: '/toggle=showInputOnNotes', value: 'Toggle Input on Notes', },
+  { key: '/toggle=allowForcedReloadOnRefresh', value: 'Toggle Forced Reload by the App', },
+  { key: '/toggle=autoRepeatFixedTimers', value: 'Toggle Automatic Repeat for Fixed Timers', },
+  { key: '/toggle=enable.alarms', value: 'Enable Alarm Sounds', },
   { key: '/alarmSound=', value: 'Choose an Alarm Sound [1-6]', },
+  { key: '/alarmVolume=', value: 'Alarm Volume [0-100]', },
 ];
