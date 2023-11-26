@@ -3,9 +3,9 @@ import * as nav from "./timer/navigationManager.js";
 import * as view from "./timer/viewManager.js";
 import * as utils from "./commons/utils.js";
 import * as acm from "./timer/autoCompleteManager.js";
-import { searchInput, bottomBar } from "./timer/documentElementsManager.js";
+import { searchInput, bottomBar, minRemainingInput, maxRemainingInput } from "./timer/documentElementsManager.js";
 import { settings } from "./timer/settingsManager.js";
-import { applySearch, searchInputValue, filterTag } from "./timer/searchBarManager.js";
+import { applySearch, searchInputValue, filterTag, minRemaining, maxRemaining } from "./timer/searchBarManager.js";
 import { applySearchWithDelay, toggleAdvancedSearch } from "./timer/searchBarManager.js";
 import { loadBackupFromClipboard, backupToClipboard } from './timer/syncManager.js';
 import { newTimer } from './timer/dataManager.js';
@@ -21,7 +21,12 @@ function init() {
     bottomBar.style.display = 'none'
   }
   searchInput.value = searchInputValue;
+  minRemainingInput.value = minRemaining;
+  maxRemainingInput.value = maxRemaining;
   applySearch(filterTag);
+  if (!settings.showBottomMenu) {
+    bottomBar.style.display = 'none'
+  }
 }
 document.addEventListener('DOMContentLoaded', init);
 

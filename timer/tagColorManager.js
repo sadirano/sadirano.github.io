@@ -11,8 +11,8 @@ export function loadColorMap() {
 }
 
 export function saveColorMap() {
+  tagColorMap['lastUpdate'] = Date.now();
   localStorage.setItem('tagColorMap', JSON.stringify(tagColorMap));
-  localStorage.setItem('tagColorMapLastUpdate', Date.now());
 }
 
 export function showColorPicker(event, tag) {

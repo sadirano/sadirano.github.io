@@ -1,4 +1,6 @@
 export const searchInput = document.getElementById('search-input');
+export const minRemainingInput = document.getElementById('min-remaining');
+export const maxRemainingInput = document.getElementById('max-remaining');
 export const searchContainer = document.getElementById('search-container');
 export const bottomBar = document.getElementById('bottom-bar');
 export const timerContainer = document.getElementById('timer-list');

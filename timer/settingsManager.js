@@ -33,9 +33,10 @@ function loadSettings() {
         return defaultSettings;
     }
 }
+
 export function saveSettings() {
+    settings['lastUpdate'] = Date.now();
     localStorage.setItem('settings', JSON.stringify(settings));
-    localStorage.setItem('settingsLastUpdate', Date.now());
 }
 
 export const settings = loadSettings()

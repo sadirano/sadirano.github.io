@@ -1,4 +1,4 @@
-import { searchInput } from "./documentElementsManager.js";
+import { maxRemainingInput, minRemainingInput, searchInput } from "./documentElementsManager.js";
 import { getDuration } from "../commons/time.js";
 import { timersList } from "./dataManager.js";
 import { executeCommand } from "./autoCompleteManager.js";
@@ -21,6 +21,8 @@ export function applySearchWithDelay() {
 // Load filters and search parameters from localStorage
 export let filterTag = localStorage.getItem('filterTag') || '';
 export let searchInputValue = localStorage.getItem('searchInputValue') || '';
+export let minRemaining = localStorage.getItem('min-remaining') || '';
+export let maxRemaining = localStorage.getItem('max-remaining') || '';
 
 export function applySearch(clickedTag) {
   filterTag = filterTag == clickedTag ? "" : clickedTag;
@@ -35,13 +37,16 @@ function applySearchInternal(searchInputValue, filterTag) {
     executeCommand(searchInput.value);
     return;
   }
+
   // Save filters and search parameters to localStorage
   localStorage.setItem('filterTag', filterTag);
   localStorage.setItem('searchInputValue', searchInputValue);
+  localStorage.setItem('min-remaining', minRemainingInput.value);
+  localStorage.setItem('max-remaining', maxRemainingInput.value);
 
   const timerElements = document.getElementsByClassName('timer');
-  const minRemaining = getDuration(document.getElementById('min-remaining').value);
-  const maxRemaining = getDuration(document.getElementById('max-remaining').value);
+  const minRemaining = getDuration(minRemainingInput.value);
+  const maxRemaining = getDuration(maxRemainingInput.value);
 
   if ((minRemaining || maxRemaining)) {
     clearInterval(intervalReapplySearch);

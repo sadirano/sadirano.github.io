@@ -1,4 +1,6 @@
-import { settings } from "./settingsManager.js";
+import { saveSettings, settings } from "./settingsManager.js";
+
+let alarmInterval;
 
 export function playAlarm() {
     let audioElement = document.getElementById('alarmAudio' + settings.alarm.sound);
@@ -9,7 +11,7 @@ export function playAlarm() {
 export function changeAlarmSound(alarm, test = true) {
     if (alarm < 1 || alarm > 6) return false;
     settings.alarm.sound = alarm;
-    settings.alarm.volume = volume;
+    saveSettings();
     if (test) {
         playAlarm();
     }
@@ -17,8 +19,9 @@ export function changeAlarmSound(alarm, test = true) {
 }
 
 export function changeAlarmVolume(volume, test = true) {
-    if (alarm < 0 || alarm > 100) return false;
-    settings.alarm.volume = volume / 10;
+    if (volume === '' || volume < 0 || volume > 100) return false;
+    settings.alarm.volume = volume / 100;
+    saveSettings();
     if (test) {
         playAlarm();
     }
@@ -32,5 +35,7 @@ export function startAlarm() {
 }
 
 export function clearAlarm() {
-    alarmInterval = clearInterval(alarmInterval);
+    if(alarmInterval) {
+        alarmInterval = clearInterval(alarmInterval);
+    }
 }

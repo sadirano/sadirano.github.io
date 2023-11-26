@@ -5,17 +5,10 @@ import { tagColorMap } from "./tagColorManager.js";
 // Function to backup timers to clipboard
 export async function backupToClipboard(event) {
   try {
-
     let backup = {
       timers: timersList,
-      tagColorMap: {
-        data: tagColorMap,
-        lastUpdate: localStorage.getItem('tagColorMapLastUpdate'),
-      },
-      settings: {
-        data: settings,
-        lastUpdate: localStorage.getItem('settingsLastUpdate'),
-      }
+      tagColorMap: tagColorMap,
+      settings: settings
     };
 
     const api = localStorage.getItem('api');
