@@ -286,7 +286,7 @@ export class TimerElement {
     this.startTimer();
     saveTimersData(this.timer);
     if (settings.allowForcedReloadOnRefresh) {
-      delayForceReload();
+      delayForceReload(60000);
     } else {
       this.displayNote();
     }
@@ -311,11 +311,11 @@ export class TimerElement {
     if (Math.floor(remainingTime_ms / 1000) === 0 && !this.notified) {
       let options = { hour: "2-digit", minute: "2-digit" };
       let hora = new Date().toLocaleString("en-us", options);
+      dynamicParamsManager.updateParams({ unread: ++dynamicParamsManager.getParams().unread });
+      updateUnreadTitle();
       showNotification(this.timerName.textContent + " Done at " + hora);
       startAlarm();
       this.notified = true;
-      dynamicParamsManager.updateParams({ unread: ++dynamicParamsManager.getParams().unread });
-      updateUnreadTitle();
       if (this.timer.fixed || this.timer.settings.repeat) this.refreshTimerDelayed();
     }
 

@@ -63,8 +63,8 @@ export function refreshPageIfNeeded(force = false) {
   }
 }
 
-export function delayForceReload() {
-  setTimeout(refreshPageIfNeeded, 500, true);
+export function delayForceReload(delay = 500) {
+  setTimeout(refreshPageIfNeeded, delay, true);
 }
 
 

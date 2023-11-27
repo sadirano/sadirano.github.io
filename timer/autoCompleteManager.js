@@ -49,7 +49,6 @@ export function executeCommand(command) {
   toggleSetting(command, 'showInputOnNotes', 'Show Input on Notes', delayForceReload);
   toggleSetting(command, 'allowForcedReloadOnRefresh', 'Allow Forced Reload on Refresh', delayForceReload);
   toggleSetting(command, 'autoRepeatFixedTimers', 'Auto Repeat Fixed Timers');
-  toggleSetting(command, 'enable.alarms', 'Enable Alarms');
 
   if (command.includes('/toggleAds')) {
     clearSearchInput();
@@ -60,6 +59,14 @@ export function executeCommand(command) {
   if (command.includes('/help')) {
     clearSearchInput();
     showResult('Sorry, can\'t help at the moment, please try again later.');
+    return;
+  }
+
+  if (command.includes('/toggleEnableAlarms')) {
+    settings.alarm.enabled = !settings.alarm.enabled;
+    saveSettings();
+    clearSearchInput();
+    showResult(`[${(settings.alarm.enabled ? 'T' : 'F')}] Enable Alarms`);
     return;
   }
 
@@ -203,7 +210,7 @@ const options = [
   { key: '/toggle=showInputOnNotes', value: 'Toggle Input on Notes', },
   { key: '/toggle=allowForcedReloadOnRefresh', value: 'Toggle Forced Reload by the App', },
   { key: '/toggle=autoRepeatFixedTimers', value: 'Toggle Automatic Repeat for Fixed Timers', },
-  { key: '/toggle=enable.alarms', value: 'Enable Alarm Sounds', },
+  { key: '/toggleEnableAlarms', value: 'Enable Alarm Sounds', },
   { key: '/alarmSound=', value: 'Choose an Alarm Sound [1-6]', },
   { key: '/alarmVolume=', value: 'Alarm Volume [0-100]', },
 ];

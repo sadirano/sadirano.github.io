@@ -29,13 +29,16 @@ export function changeAlarmVolume(volume, test = true) {
 }
 
 export function startAlarm() {
-    if (!alarmInterval && settings.enableAlarms) {
+    if (!alarmInterval && settings.alarm.enabled) {
+        playAlarm();
         alarmInterval = setInterval(playAlarm, settings.alarm.interval);
+        setTimeout(clearAlarm, 60000);
     }
 }
 
 export function clearAlarm() {
     if(alarmInterval) {
-        alarmInterval = clearInterval(alarmInterval);
+        clearInterval(alarmInterval);
+        alarmInterval = undefined;
     }
 }

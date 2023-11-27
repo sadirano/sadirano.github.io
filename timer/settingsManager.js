@@ -17,6 +17,7 @@ const defaultSettings = {
         enabled : false,
         sound: 1,
         volume : 0.5,
+        interval: 10000,
     },
 };
 
